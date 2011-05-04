@@ -3,7 +3,7 @@
  * Register/Interrupt access for userspace aDSP library.
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
  * Author: Iliyan Malchev <ibm@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1272,6 +1272,7 @@ fail_request_irq:
 	kfree(adsp_info.init_info_ptr);
 	return rc;
 }
+#ifdef CONFIG_DEBUG_FS
 static int get_parameters(char *buf, long int *param1, int num_of_par)
 {
 	char *token;
@@ -1385,6 +1386,7 @@ static ssize_t adsp_debug_write(struct file *file, const char __user *buf,
 
 	return rc;
 }
+#endif
 
 static struct platform_driver msm_adsp_driver = {
 	.probe = msm_adsp_probe,
@@ -1395,10 +1397,12 @@ static struct platform_driver msm_adsp_driver = {
 
 static char msm_adsp_driver_name[] = "rs00000000";
 
+#ifdef CONFIG_DEBUG_FS
 static const struct file_operations adsp_debug_fops = {
 	.write = adsp_debug_write,
 	.open = adsp_debug_open,
 };
+#endif
 
 static int __init adsp_init(void)
 {
@@ -1414,6 +1418,8 @@ static int __init adsp_init(void)
 		 S_IFREG | S_IRUGO, dentry_adsp,
 		 (void *) "read_log", &adsp_debug_fops);
 	}
+	rdump = 0;
+	wdump = 0;
 #endif /* CONFIG_DEBUG_FS */
 
 	rpc_adsp_rtos_atom_prog = 0x3000000a;
@@ -1431,8 +1437,6 @@ static int __init adsp_init(void)
 	snprintf(msm_adsp_driver_name, sizeof(msm_adsp_driver_name),
 		"rs%08x",
 		rpc_adsp_rtos_atom_prog);
-	rdump = 0;
-	wdump = 0;
 	msm_adsp_driver.driver.name = msm_adsp_driver_name;
 	rc = platform_driver_register(&msm_adsp_driver);
 	MM_INFO("%s -- %d\n", msm_adsp_driver_name, rc);
