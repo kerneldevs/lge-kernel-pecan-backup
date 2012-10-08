@@ -392,4 +392,4 @@ header-y += msm_q6vdec.h
 header-y += msm_audio.h
 header-y += msm_audio_aac.h
 header-y += android_pmem.h
-
+header-y += genlock.h
