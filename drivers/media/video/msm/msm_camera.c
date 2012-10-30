@@ -133,7 +133,7 @@ static void msm_enqueue(struct msm_device_queue *queue,
 		__q->len--;					\
 		qcmd = list_first_entry(&__q->list,		\
 				struct msm_queue_cmd, member);	\
-		 if (&qcmd->member)  \
+		if ((qcmd) && (&qcmd->member) && (&qcmd->member.next))	\
 			list_del_init(&qcmd->member);			\
 	}							\
 	spin_unlock_irqrestore(&__q->lock, flags);	\
