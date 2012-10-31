@@ -1,1 +1,1 @@
-#define UTS_RELEASE "2.6.32.59-RM-CAF-PECAN"
+#define UTS_RELEASE "2.6.35.10-PecanCM-ics"
