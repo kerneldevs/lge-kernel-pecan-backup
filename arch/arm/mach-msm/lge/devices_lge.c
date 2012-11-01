@@ -222,36 +222,56 @@ void __init msm_add_fb_device(void)
 
 /* setting kgsl device */
 #ifdef CONFIG_ARCH_MSM7X27
-static struct resource kgsl_resources[] = {
-	{
-		.name = "kgsl_reg_memory",
-		.start = 0xA0000000,
-		.end = 0xA001ffff,
-		.flags = IORESOURCE_MEM,
+static struct resource kgsl_3d0_resources[] = {
+         {
+                 .name  = KGSL_3D0_REG_MEMORY,
+                 .start = 0xA0000000,
+                 .end = 0xA001ffff,
+                 .flags = IORESOURCE_MEM,
+         },
+         {
+                 .name = KGSL_3D0_IRQ,
+                 .start = INT_GRAPHICS,
+                 .end = INT_GRAPHICS,
+                 .flags = IORESOURCE_IRQ,
+         },
+};
+
+static struct kgsl_device_platform_data kgsl_3d0_pdata = {
+	.pwr_data = {
+		.pwrlevel = {
+			{
+				.gpu_freq = 128000000,
+				.bus_freq = 128000000,
+			},
+		},
+		.init_level = 0,
+		.num_levels = 1,
+		.set_grp_async = NULL,
+		.idle_timeout = HZ/5,
+		.nap_allowed = true,
 	},
-	{
-		.name   = "kgsl_phys_memory",
-		.start = 0,
-		.end = 0,
-		.flags = IORESOURCE_MEM,
+		.clk = {
+		.name = {
+			.clk = "grp_clk",
+			.pclk = "grp_pclk",
+		},
 	},
-	{
-		.name = "kgsl_yamato_irq",
-		.start = INT_GRAPHICS,
-		.end = INT_GRAPHICS,
-		.flags = IORESOURCE_IRQ,
+	.imem_clk_name = {
+		.clk = "imem_clk",
+		.pclk = NULL,
 	},
 };
 
-static struct kgsl_platform_data kgsl_pdata;
 
-static struct platform_device msm_device_kgsl = {
-	.name = "kgsl",
+
+struct platform_device msm_kgsl_3d0 = {
+	.name = "kgsl-3d0",
 	.id = -1,
-	.num_resources = ARRAY_SIZE(kgsl_resources),
-	.resource = kgsl_resources,
+	.num_resources = ARRAY_SIZE(kgsl_3d0_resources),
+	.resource = kgsl_3d0_resources,
 	.dev = {
-		.platform_data = &kgsl_pdata,
+		.platform_data = &kgsl_3d0_pdata,
 	},
 };
 
@@ -264,11 +284,11 @@ void __init msm_add_kgsl_device(void)
 	/* This value has been set to 160000 for power savings. */
 	/* OEMs may modify the value at their discretion for performance */
 	/* The appropriate maximum replacement for 160000 is: */
-	/* clk_get_max_axi_khz() */
+	/* clk_get_max_axi_khz()
 	kgsl_pdata.high_axi_3d = 160000;
 
 	/* 7x27 doesn't allow graphics clocks to be run asynchronously to */
-	/* the AXI bus */
+	/* the AXI bus
 	kgsl_pdata.max_grp2d_freq = 0;
 	kgsl_pdata.min_grp2d_freq = 0;
 	kgsl_pdata.set_grp2d_async = NULL;
@@ -277,10 +297,10 @@ void __init msm_add_kgsl_device(void)
 	kgsl_pdata.set_grp3d_async = NULL;
 	kgsl_pdata.imem_clk_name = "imem_clk";
 	kgsl_pdata.grp3d_clk_name = "grp_clk";
-	kgsl_pdata.grp2d_clk_name = NULL;
+	kgsl_pdata.grp2d_clk_name = NULL;*/
 #endif
 
-	platform_device_register(&msm_device_kgsl);
+	/*platform_device_register(&msm_kgsl_3d0);*/
 }
 #endif
 
@@ -421,8 +441,8 @@ void __init msm_msm7x2x_allocate_memory_regions(void)
 #ifdef CONFIG_ARCH_MSM7X27
 	size = MSM_GPU_PHYS_SIZE;
 	addr = alloc_bootmem(size);
-	kgsl_resources[1].start = __pa(addr);
-	kgsl_resources[1].end = kgsl_resources[1].start + size - 1;
+	kgsl_3d0_resources[1].start = __pa(addr);
+	kgsl_3d0_resources[1].end = kgsl_3d0_resources[1].start + size - 1;
 	pr_info("allocating %lu bytes at %p (at %lx physical) for KGSL\n",
 			size, addr, __pa(addr));
 #endif

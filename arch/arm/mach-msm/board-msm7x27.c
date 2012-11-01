@@ -76,7 +76,7 @@
 #ifdef CONFIG_ARCH_MSM7X25
 #define MSM_PMEM_MDP_SIZE	0xb21000
 #define MSM_PMEM_ADSP_SIZE	0x97b000
-#define MSM_PMEM_AUDIO_SIZE	0x121000
+//#define MSM_PMEM_AUDIO_SIZE	0x121000
 #define MSM_FB_SIZE		0x200000
 #define PMEM_KERNEL_EBI1_SIZE	0x64000
 #endif
@@ -85,7 +85,7 @@
 #define MSM_PMEM_MDP_SIZE  	0x1700000 /*msm: 7x27: move video encoder to /dev/pmem_adsp*/
 //#define MSM_PMEM_MDP_SIZE	0x1B76000
 #define MSM_PMEM_ADSP_SIZE	0xB71000
-#define MSM_PMEM_AUDIO_SIZE	0x5B000
+//#define MSM_PMEM_AUDIO_SIZE	0x5B000
 #define MSM_FB_SIZE		0x177000
 #define MSM_GPU_PHYS_SIZE	SZ_2M
 #define PMEM_KERNEL_EBI1_SIZE	0x1C000
@@ -94,7 +94,7 @@
 #endif
 
 /* Using upper 1/2MB of Apps Bootloader memory*/
-#define MSM_PMEM_AUDIO_START_ADDR	0x80000ul
+//#define MSM_PMEM_AUDIO_START_ADDR	0x80000ul
 
 static struct resource smc91x_resources[] = {
 	[0] = {
@@ -520,11 +520,11 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.cached = 1,
 };
 
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
+/*static struct android_pmem_platform_data android_pmem_audio_pdata = {
 	.name = "pmem_audio",
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
 	.cached = 0,
-};
+};*/
 
 static struct platform_device android_pmem_device = {
 	.name = "android_pmem",
@@ -538,11 +538,11 @@ static struct platform_device android_pmem_adsp_device = {
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
 
-static struct platform_device android_pmem_audio_device = {
+/*static struct platform_device android_pmem_audio_device = {
 	.name = "android_pmem",
 	.id = 2,
 	.dev = { .platform_data = &android_pmem_audio_pdata },
-};
+};*/
 
 static struct platform_device android_pmem_kernel_ebi1_device = {
 	.name = "android_pmem",
@@ -903,37 +903,55 @@ static void __init bt_power_init(void)
 #endif
 
 #ifdef CONFIG_ARCH_MSM7X27
-static struct resource kgsl_resources[] = {
-	{
-		.name = "kgsl_reg_memory",
-		.start = 0xA0000000,
-		.end = 0xA001ffff,
-		.flags = IORESOURCE_MEM,
+static struct resource kgsl_3d0_resources[] = {
+         {
+                 .name  = KGSL_3D0_REG_MEMORY,
+                 .start = 0xA0000000,
+                 .end = 0xA001ffff,
+                 .flags = IORESOURCE_MEM,
+         },
+         {
+                 .name = KGSL_3D0_IRQ,
+                 .start = INT_GRAPHICS,
+                 .end = INT_GRAPHICS,
+                 .flags = IORESOURCE_IRQ,
+         },
+};
+
+static struct kgsl_device_platform_data kgsl_3d0_pdata = {
+  .pwr_data = {
+    .pwrlevel = {
+      {
+        .gpu_freq = 128000000,	
+        .bus_freq = 128000000,	
+      },
+    },
+    .init_level = 0,	
+    .num_levels = 1,	
+    .set_grp_async = NULL,
+    .idle_timeout = HZ/5,
+    .nap_allowed = true,
 	},
-	{
-		.name   = "kgsl_phys_memory",
-		.start = 0,
-		.end = 0,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name = "kgsl_yamato_irq",
-		.start = INT_GRAPHICS,
-		.end = INT_GRAPHICS,
-		.flags = IORESOURCE_IRQ,
+  .clk = {
+    .name = {
+      .clk = "grp_clk",	
+      .pclk = "grp_pclk",	
+    },	
+  },	
+  .imem_clk_name = {
+    .clk = "imem_clk",
+    .pclk = NULL,
 	},
 };
 
-static struct kgsl_platform_data kgsl_pdata;
-
-static struct platform_device msm_device_kgsl = {
-	.name = "kgsl",
-	.id = -1,
-	.num_resources = ARRAY_SIZE(kgsl_resources),
-	.resource = kgsl_resources,
-	.dev = {
-		.platform_data = &kgsl_pdata,
-	},
+struct platform_device msm_kgsl_3d0 = {
+         .name = "kgsl-3d0",
+         .id = 0,
+         .num_resources = ARRAY_SIZE(kgsl_3d0_resources),	
+         .resource = kgsl_3d0_resources,	
+         .dev = {	
+                 .platform_data = &kgsl_3d0_pdata,	
+         },
 };
 #endif
 
@@ -1360,7 +1378,7 @@ static struct platform_device *devices[] __initdata = {
 	&android_pmem_kernel_ebi1_device,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-	&android_pmem_audio_device,
+//	&android_pmem_audio_device,
 	&msm_fb_device,
 	&lcdc_gordon_panel_device,
 	&msm_device_uart_dm1,
@@ -1390,7 +1408,7 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_bluesleep_device,
 #ifdef CONFIG_ARCH_MSM7X27
-	&msm_device_kgsl,
+	&msm_kgsl_3d0,
 #endif
 #if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
 	&msm_device_tsif,
@@ -1863,11 +1881,11 @@ static void __init msm7x2x_init(void)
 	/* This value has been set to 160000 for power savings. */
 	/* OEMs may modify the value at their discretion for performance */
 	/* The appropriate maximum replacement for 160000 is: */
-	/* clk_get_max_axi_khz() */
-	kgsl_pdata.high_axi_3d = 160000;
+	/* clk_get_max_axi_khz() 
+	kgsl_pdata.high_axi_3d = 160000;*/
 
 	/* 7x27 doesn't allow graphics clocks to be run asynchronously to */
-	/* the AXI bus */
+	/* the AXI bus 
 	kgsl_pdata.max_grp2d_freq = 0;
 	kgsl_pdata.min_grp2d_freq = 0;
 	kgsl_pdata.set_grp2d_async = NULL;
@@ -1876,7 +1894,7 @@ static void __init msm7x2x_init(void)
 	kgsl_pdata.set_grp3d_async = NULL;
 	kgsl_pdata.imem_clk_name = "imem_clk";
 	kgsl_pdata.grp3d_clk_name = "grp_clk";
-	kgsl_pdata.grp2d_clk_name = NULL;
+	kgsl_pdata.grp2d_clk_name = NULL;*/
 #endif
 	usb_mpp_init();
 

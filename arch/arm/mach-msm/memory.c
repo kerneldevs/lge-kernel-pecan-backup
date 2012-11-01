@@ -23,6 +23,8 @@
 #include <asm/mach/map.h>
 #include <asm/cacheflush.h>
 #include <linux/hardirq.h>
+#include <linux/memory_alloc.h>	
+#include <mach/msm_memtypes.h>
 #if defined(CONFIG_MSM_NPA_REMOTE)
 #include "npa_remote.h"
 #include <linux/completion.h>
@@ -224,3 +226,8 @@ int platform_physical_low_power_pages(unsigned long start_pfn,
 	return change_memory_power_state(start_pfn, nr_pages,
 		MEMORY_SELF_REFRESH);
 }
+
+unsigned long allocate_contiguous_ebi_nomap(unsigned long size,unsigned long align){
+	return _allocate_contiguous_memory_nomap(size, MEMTYPE_EBI0,align, __builtin_return_address(0));
+}
+EXPORT_SYMBOL(allocate_contiguous_ebi_nomap);
