@@ -222,8 +222,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fomit-frame-pointer -pipe
-HOSTCXXFLAGS = -Ofast -pipe
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -fomit-frame-pointer -pipe
+HOSTCXXFLAGS = -pipe
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -537,8 +537,6 @@ KBUILD_CFLAGS	+=	-Os \
                         -D__ARM_ARCH_5T__ \
                         -D__ARM_ARCH_5E__ \
                         -D__ARM_ARCH_5TE__
-else
-KBUILD_CFLAGS	+= -Ofast
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
