@@ -454,3 +454,4 @@ void adreno_debugfs_init(struct kgsl_device *device)
 			    &pm_regs_enabled_fops);
 }
 
+

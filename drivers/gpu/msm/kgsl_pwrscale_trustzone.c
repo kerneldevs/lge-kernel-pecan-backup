@@ -196,3 +196,4 @@ struct kgsl_pwrscale_policy kgsl_pwrscale_policy_tz = {
 };
 EXPORT_SYMBOL(kgsl_pwrscale_policy_tz);
 
+

@@ -86,3 +86,4 @@ static inline unsigned long kgsl_get_clkrate(struct clk *clk)
 
 #endif /* __KGSL_PWRCTRL_H */
 
+

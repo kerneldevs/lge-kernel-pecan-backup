@@ -338,3 +338,4 @@ void kgsl_pwrscale_close(struct kgsl_device *device)
 }
 EXPORT_SYMBOL(kgsl_pwrscale_close);
 
+

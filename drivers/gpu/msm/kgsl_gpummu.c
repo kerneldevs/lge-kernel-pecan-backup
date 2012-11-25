@@ -11,13 +11,6 @@
  * GNU General Public License for more details.
  *
  */
-//patch for error: "implicit declaration of function 'writel_relaxed'"
-/**********************************************/
-#define writeb_relaxed			writeb
-#define writew_relaxed			writew
-#define writel_relaxed			writel
-/*********************************************/
-
 #include <linux/types.h>
 #include <linux/device.h>
 #include <linux/spinlock.h>
@@ -772,4 +765,5 @@ struct kgsl_mmu_pt_ops gpummu_pt_ops = {
 	.mmu_pt_equal = kgsl_gpummu_pt_equal,
 	.mmu_pt_get_flags = kgsl_gpummu_pt_get_flags,
 };
+
 

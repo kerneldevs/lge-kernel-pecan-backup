@@ -1606,3 +1606,4 @@ struct adreno_gpudev adreno_a2xx_gpudev = {
 	.irq_control = a2xx_irq_control,
 };
 
+

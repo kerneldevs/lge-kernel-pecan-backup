@@ -97,6 +97,7 @@ struct msm_hsusb_gadget_platform_data {
 
 	u32 swfi_latency;
 	int self_powered;
+	int is_phy_status_timer_on;
 };
 
 struct msm_hsusb_platform_data {

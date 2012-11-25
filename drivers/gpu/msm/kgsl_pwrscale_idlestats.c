@@ -220,3 +220,4 @@ struct kgsl_pwrscale_policy kgsl_pwrscale_policy_idlestats = {
 	.close = idlestats_close
 };
 
+

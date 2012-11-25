@@ -192,3 +192,4 @@ unsigned int kgsl_mmu_get_current_ptbase(struct kgsl_device *device);
 enum kgsl_mmutype kgsl_mmu_get_mmutype(void);
 #endif /* __KGSL_MMU_H */
 
+

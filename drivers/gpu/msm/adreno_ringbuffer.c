@@ -10,13 +10,6 @@
  * GNU General Public License for more details.
  *
  */
-
-//patch for error: "implicit declaration of function 'writel_relaxed'"
-/**********************************************/
-#define writeb_relaxed			writeb
-#define writew_relaxed			writew
-#define writel_relaxed			writel
-/*********************************************/
 #include <linux/firmware.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
@@ -817,4 +810,5 @@ adreno_ringbuffer_restore(struct adreno_ringbuffer *rb, unsigned int *rb_buff,
 	rb->wptr += num_rb_contents;
 	adreno_ringbuffer_submit(rb);
 }
+
 

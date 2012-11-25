@@ -132,3 +132,4 @@ kgsl_allocate_contiguous(struct kgsl_memdesc *memdesc, size_t size)
 
 #endif /* __KGSL_SHAREDMEM_H */
 
+
