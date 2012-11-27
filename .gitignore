@@ -23,6 +23,7 @@
 *.symtypes
 *.order
 *.rej
+*.patch
 
 modules.builtin
 *.elf
