@@ -23,6 +23,7 @@
 *.symtypes
 *.order
 *.rej
+*.patch
 
 modules.builtin
 *.elf
@@ -33,6 +34,7 @@ modules.builtin
 *.lzo
 *.patch
 *.gcno
+*.gzip
 
 #
 # Top-level generic files
