@@ -1723,7 +1723,7 @@ static void msm_pm_power_off(void)
 	smsm_change_state_nonotify(SMSM_APPS_STATE,
 						  0, SMSM_SYSTEM_POWER_DOWN);
 #endif
-
+ 
 	msm_rpcrouter_close();
 	printk(KERN_INFO"%s: \n",__func__);
 	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
