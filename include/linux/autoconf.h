@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
- * Wed Dec  5 10:26:23 2012
+ * Wed Dec  5 10:30:13 2012
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
@@ -551,7 +551,6 @@
 #define CONFIG_ANDROID_LOW_MEMORY_KILLER 1
 #define CONFIG_USB_CSW_HACK 1
 #define CONFIG_LGE_FUEL_SPG 1
-#define CONFIG_NETFILTER_XT_MATCH_SOCKET 1
 #define CONFIG_CPU_32 1
 #define CONFIG_NET_SCHED 1
 #define CONFIG_NETFILTER 1
