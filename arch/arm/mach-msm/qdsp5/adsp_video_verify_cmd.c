@@ -3,7 +3,7 @@
  * Verificion code for aDSP VDEC packets from userspace.
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2008-2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,6 +22,8 @@
 #include <mach/qdsp5/qdsp5vdeccmdi.h>
 #include "adsp.h"
 #include <mach/debug_mm.h>
+
+#define MAX_FLUSH_SIZE 160
 
 static inline void *high_low_short_to_ptr(unsigned short high,
 					  unsigned short low)
@@ -52,16 +54,15 @@ static int pmem_fixup_high_low(unsigned short *high,
 	phys_size = (unsigned long)high_low_short_to_ptr(size_high, size_low);
 	MM_DBG("virt %x %x\n", (unsigned int)phys_addr,
 			(unsigned int)phys_size);
-        if (phys_addr) {
-                if (adsp_pmem_fixup_kvaddr(module, &phys_addr,
-                         &kvaddr, phys_size, filp, offset)) {
-                        MM_ERR("ah%x al%x sh%x sl%x addr %x size %x\n",
-                                        *high, *low, size_high,
-                                        size_low, (unsigned int)phys_addr,
-                                        (unsigned int)phys_size);
-                        return -EINVAL;
-                }
-
+	if (phys_addr) {
+		if (adsp_pmem_fixup_kvaddr(module, &phys_addr,
+			 &kvaddr, phys_size, filp, offset)) {
+			MM_ERR("ah%x al%x sh%x sl%x addr %x size %x\n",
+					*high, *low, size_high,
+					size_low, (unsigned int)phys_addr,
+					(unsigned int)phys_size);
+			return -EINVAL;
+		}
 	}
 	ptr_to_high_low_short(phys_addr, high, low);
 	MM_DBG("phys %x %x\n", (unsigned int)phys_addr,
@@ -88,6 +89,7 @@ static int verify_vdec_pkt_cmd(struct msm_adsp_module *module,
 	struct file *filp = NULL;
 	unsigned long offset = 0;
 	struct pmem_addr pmem_addr;
+	unsigned long Codec_Id = 0;
 
 	MM_DBG("cmd_size %d cmd_id %d cmd_data %x\n", cmd_size, cmd_id,
 					(unsigned int)cmd_data);
@@ -109,18 +111,36 @@ static int verify_vdec_pkt_cmd(struct msm_adsp_module *module,
 				&subframe_pkt_size,
 				&filp, &offset))
 		return -1;
-
+	Codec_Id = pkt->codec_selection_word;
+	/*Invalidate cache before accessing the cached pmem buffer*/
+	if (filp) {
+		pmem_addr.vaddr = subframe_pkt_addr;
+		pmem_addr.length = (((subframe_pkt_size*2) + 31) & (~31)) + 32;
+		pmem_addr.offset = offset;
+		if (pmem_cache_maint (filp, PMEM_INV_CACHES,  &pmem_addr)) {
+			MM_ERR("Cache operation failed for phys addr high %x"
+				" addr low %x\n", pkt->subframe_packet_high,
+				pkt->subframe_packet_low);
+			return -EINVAL;
+		}
+	}
 	/* deref those ptrs and check if they are a frame header packet */
 	frame_header_pkt = (unsigned short *)subframe_pkt_addr;
-
 	switch (frame_header_pkt[0]) {
 	case 0xB201: /* h.264 vld in dsp */
+	   if (Codec_Id == 0x8) {
 		num_addr = 16;
 		skip = 0;
 		start_pos = 5;
+	   } else {
+	       num_addr = 33;
+	       skip = 0;
+	       start_pos = 6;
+	   }
 		break;
 	case 0x8201: /* h.264 vld in arm */
-		num_addr = skip = 8;
+		num_addr = 16;
+		skip = 0;
 		start_pos = 6;
 		break;
 	case 0x4D01: /* mpeg-4 and h.263 vld in arm */
@@ -128,26 +148,38 @@ static int verify_vdec_pkt_cmd(struct msm_adsp_module *module,
 		skip = 0;
 		start_pos = 5;
 		break;
+	case 0x9201: /*For Real Decoder*/
+		num_addr = 2;
+		skip = 0;
+		start_pos = 5;
+		break;
 	case 0xBD01: /* mpeg-4 and h.263 vld in dsp */
 		num_addr = 3;
 		skip = 0;
 		start_pos = 6;
+		if (((frame_header_pkt[5] & 0x000c) >> 2) == 0x2) /* B-frame */
+			start_pos = 8;
 		break;
 	case 0x0001: /* wmv */
 		num_addr = 2;
 		skip = 0;
 		start_pos = 5;
 		break;
-        case 0xC201: /*WMV main profile*/
-                num_addr = 3;
-                skip = 0;
-                start_pos = 6;
-                break;
-        case 0xDD01: /* VP6 */
-                num_addr = 3;
-                skip = 0;
-                start_pos = 10;
-                break;
+	case 0xC201: /*WMV main profile*/
+		 num_addr = 3;
+		 skip = 0;
+		 start_pos = 6;
+		 break;
+	case 0xDD01: /* VP6 */
+		num_addr = 3;
+		skip = 0;
+		start_pos = 10;
+		break;
+	case 0xFD01: /* VP8 */
+		num_addr = 3;
+		skip = 0;
+		start_pos = 24;
+		break;
 	default:
 		return 0;
 	}
@@ -160,35 +192,36 @@ static int verify_vdec_pkt_cmd(struct msm_adsp_module *module,
 			      &frame_buffer_size_high,
 			      &frame_buffer_size_low);
 	for (i = 0; i < num_addr; i++) {
-               if (frame_buffer_high && frame_buffer_low) {
-                       if (pmem_fixup_high_low(frame_buffer_high,
-                                               frame_buffer_low,
-                                               frame_buffer_size_high,
-                                               frame_buffer_size_low,
-                                               module,
-                                               NULL, NULL, NULL, NULL))
-                               return -EINVAL;
-                }
+		if (frame_buffer_high && frame_buffer_low) {
+			if (pmem_fixup_high_low(frame_buffer_high,
+						frame_buffer_low,
+						frame_buffer_size_high,
+						frame_buffer_size_low,
+						module,
+						NULL, NULL, NULL, NULL))
+				return -EINVAL;
+	   }
 		frame_buffer_high += 2;
 		frame_buffer_low += 2;
 	}
 	/* Patch the output buffer. */
 	frame_buffer_high += 2*skip;
 	frame_buffer_low += 2*skip;
-        if (frame_buffer_high && frame_buffer_low) {
-                if (pmem_fixup_high_low(frame_buffer_high,
-                                        frame_buffer_low,
-                                        frame_buffer_size_high,
-                                        frame_buffer_size_low,
-                                        module,
-                                        NULL, NULL, NULL, NULL))
-                        return -EINVAL;
-        }
+	if (frame_buffer_high && frame_buffer_low) {
+		if (pmem_fixup_high_low(frame_buffer_high,
+					frame_buffer_low,
+					frame_buffer_size_high,
+					frame_buffer_size_low,
+					module,
+					NULL, NULL, NULL, NULL))
+			return -EINVAL;
+	}
+	/*Flush the cached pmem subframe packet before sending to DSP*/
 	if (filp) {
 		pmem_addr.vaddr = subframe_pkt_addr;
-		pmem_addr.length = ((subframe_pkt_size + 31) & (~31)) + 32;
+		pmem_addr.length = MAX_FLUSH_SIZE;
 		pmem_addr.offset = offset;
-		if (pmem_cache_maint (filp, PMEM_CLEAN_CACHES, &pmem_addr)) {
+		if (pmem_cache_maint(filp, PMEM_CLEAN_CACHES, &pmem_addr)) {
 			MM_ERR("Cache operation failed for phys addr high %x"
 				" addr low %x\n", pkt->subframe_packet_high,
 				pkt->subframe_packet_low);

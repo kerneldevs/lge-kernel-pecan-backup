@@ -255,7 +255,6 @@ struct msm_battery_info {
 	u32 battery_level;
 	u32 battery_voltage; /* in millie volts */
 	u32 battery_temp;  /* in celsius */
-	u32  battery_tmp_cap;
 	#if defined(CONFIG_MACH_MSM7X27_THUNDERC)
 	u32 valid_battery_id;
 	u32 battery_therm;
@@ -847,7 +846,6 @@ static void msm_batt_update_psy_status(void)
 	msm_batt_info.battery_temp 	= battery_temp * 10;
 	msm_batt_info.valid_battery_id  = battery_id;
 	msm_batt_info.battery_therm     = battery_therm;
-	battery_tmp_cap = msm_batt_info.calculate_capacity(battery_soc);
 #else
 	msm_batt_info.battery_temp 	= battery_temp;
 #endif
@@ -861,10 +859,10 @@ static void msm_batt_update_psy_status(void)
 	if (!supp)
 		supp = msm_batt_info.current_ps;
 #else
-	if(msm_batt_info.battery_voltage != battery_tmp_cap) {
+	if(msm_batt_info.battery_voltage != battery_voltage) {
 		msm_batt_info.battery_voltage = battery_voltage;
 		msm_batt_info.batt_capacity = 
-			battery_tmp_cap;
+			msm_batt_info.calculate_capacity(battery_soc);
 		DBG_LIMIT("BATT: voltage = %u mV [capacity = %d%%]\n",
 			 battery_voltage, msm_batt_info.batt_capacity);
 
