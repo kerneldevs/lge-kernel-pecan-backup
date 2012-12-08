@@ -207,6 +207,7 @@ struct rpc_reply_batt_chg_v1 {
 	u32	battery_level;
 	u32     battery_voltage;
 	u32	battery_temp;
+	u32  battery_tmp_cap;
 #if defined(CONFIG_LGE_FUEL_GAUGE) || defined(CONFIG_LGE_FUEL_SPG)
 	u32	battery_soc;
 #endif
@@ -859,10 +860,10 @@ static void msm_batt_update_psy_status(void)
 	if (!supp)
 		supp = msm_batt_info.current_ps;
 #else
-	if(msm_batt_info.battery_voltage != battery_voltage) {
+	if(msm_batt_info.battery_voltage != battery_tmp_cap) {
 		msm_batt_info.battery_voltage = battery_voltage;
 		msm_batt_info.batt_capacity = 
-			msm_batt_info.calculate_capacity(battery_soc);
+			battery_tmp_cap;
 		DBG_LIMIT("BATT: voltage = %u mV [capacity = %d%%]\n",
 			 battery_voltage, msm_batt_info.batt_capacity);
 
