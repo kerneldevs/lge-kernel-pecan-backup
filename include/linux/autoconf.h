@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
- * Sat Dec  8 11:01:30 2012
+ * Mon Dec 10 15:19:31 2012
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
@@ -466,7 +466,7 @@
 #define CONFIG_MSM_SMD_TTY 1
 #define CONFIG_MSM7200A_TLMM 1
 #define CONFIG_MD 1
-#define CONFIG_LOCALVERSION "-PecanCM-cm9"
+#define CONFIG_LOCALVERSION "-PecanCM-cm10"
 #define CONFIG_USB_MSM_OTG_72K 1
 #define CONFIG_MEDIA_TUNER_MC44S803 1
 #define CONFIG_DIAG_CHAR 1
