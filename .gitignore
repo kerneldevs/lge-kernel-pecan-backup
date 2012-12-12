@@ -54,7 +54,12 @@ modules.builtin
 !.gitignore
 !.mailmap
 
+# compressed boot files
 arch/arm/boot/compressed/.
+arch/arm/boot/compressed/ashldi3.S
+arch/arm/boot/compressed/piggy.xzkern
+arch/arm/boot/compressed/piggy.gzip
+arch/arm/boot/compressed/lib1funcs.S
 
 #
 # Generated include files
