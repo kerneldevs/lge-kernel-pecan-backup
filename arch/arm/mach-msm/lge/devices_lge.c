@@ -338,12 +338,6 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.cached = 0,
 };
 
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
-	.name = "pmem_audio",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-};
-
 static struct platform_device android_pmem_device = {
 	.name = "android_pmem",
 	.id = 0,
@@ -356,12 +350,6 @@ static struct platform_device android_pmem_adsp_device = {
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
 
-static struct platform_device android_pmem_audio_device = {
-	.name = "android_pmem",
-	.id = 2,
-	.dev = { .platform_data = &android_pmem_audio_pdata },
-};
-
 static struct platform_device android_pmem_kernel_ebi1_device = {
 	.name = "android_pmem",
 	.id = 4,
@@ -372,7 +360,6 @@ static struct platform_device *pmem_devices[] __initdata = {
 	&android_pmem_kernel_ebi1_device,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-	&android_pmem_audio_device,
 };
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
@@ -425,12 +412,6 @@ void __init msm_msm7x2x_allocate_memory_regions(void)
 		pr_info("allocating %lu bytes at %p (%lx physical) for adsp "
 				"pmem arena\n", size, addr, __pa(addr));
 	}
-
-	size = MSM_PMEM_AUDIO_SIZE;
-	android_pmem_audio_pdata.start = MSM_PMEM_AUDIO_START_ADDR;
-	android_pmem_audio_pdata.size = size;
-	pr_info("allocating %lu bytes (at %lx physical) for audio "
-		"pmem arena\n", size , MSM_PMEM_AUDIO_START_ADDR);
 	
 	size = pmem_fb_size ? : MSM_FB_SIZE;
 	addr = alloc_bootmem(size);

@@ -38,7 +38,6 @@
 #ifdef CONFIG_ARCH_MSM7X25
 #define MSM_PMEM_MDP_SIZE	0xb21000
 #define MSM_PMEM_ADSP_SIZE	0x97b000
-#define MSM_PMEM_AUDIO_SIZE	0x121000
 #define MSM_FB_SIZE		0x200000
 #define PMEM_KERNEL_EBI1_SIZE	0x64000
 #endif
@@ -52,8 +51,7 @@
 #define MSM_PMEM_MDP_SIZE	0x1B76000
 #define MSM_FB_SIZE		0x177000
 #endif
-#define MSM_PMEM_ADSP_SIZE	0xB71000
-#define MSM_PMEM_AUDIO_SIZE	0x5B000
+#define MSM_PMEM_ADSP_SIZE     0xC00000 //12MB
 #define MSM_GPU_PHYS_SIZE	SZ_2M
 #define PMEM_KERNEL_EBI1_SIZE	0x1C000
 
@@ -65,9 +63,6 @@
 #define MSM_GPU_PHYS_START_ADDR	 0xD600000ul
 #endif
 #endif
-
-/* Using upper 1/2MB of Apps Bootloader memory*/
-#define MSM_PMEM_AUDIO_START_ADDR	0x80000ul
 
 /* TA charger */
 #define GISELE_TA_CHG_CURRENT	600
