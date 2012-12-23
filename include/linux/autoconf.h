@@ -1,11 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
-<<<<<<< HEAD
- * Wed Dec 12 14:44:37 2012
-=======
- * Wed Dec 12 20:37:14 2012
->>>>>>> 108e120... some pm fixes
+ * Sun Dec 23 18:06:03 2012
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
@@ -285,6 +281,7 @@
 #define CONFIG_GENERIC_HARDIRQS_NO__DO_IRQ 1
 #define CONFIG_MMC_MSM_SDIO_SUPPORT 1
 #define CONFIG_USB_GADGET_MSM_72K 1
+#define CONFIG_HAVE_KERNEL_XZ 1
 #define CONFIG_HAVE_IDE 1
 #define CONFIG_LOCKD_V4 1
 #define CONFIG_BLK_DEV_RAM 1
@@ -470,7 +467,7 @@
 #define CONFIG_MSM_SMD_TTY 1
 #define CONFIG_MSM7200A_TLMM 1
 #define CONFIG_MD 1
-#define CONFIG_LOCALVERSION "-PecanCM-cm10"
+#define CONFIG_LOCALVERSION "-PecanCM-cm10.1"
 #define CONFIG_USB_MSM_OTG_72K 1
 #define CONFIG_MEDIA_TUNER_MC44S803 1
 #define CONFIG_DIAG_CHAR 1
