@@ -1,7 +1,11 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
+<<<<<<< HEAD
  * Sun Dec 23 18:06:03 2012
+=======
+ * Wed Dec  5 10:30:13 2012
+>>>>>>> parent of ef5c0da... backport staging framebuffer from 3.0
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
