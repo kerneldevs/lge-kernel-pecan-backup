@@ -2,7 +2,7 @@ VERSION = 2
 PATCHLEVEL = 6
 SUBLEVEL = 35
 EXTRAVERSION = .10
-NAME = Man-Eating Seals of Antiquity
+NAME = Yokohama
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
