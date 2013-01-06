@@ -33,6 +33,7 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/wakelock.h>
+#include <linux/slab.h>
 #include <mach/debug_mm.h>
 
 static struct wake_lock adsp_wake_lock;
@@ -1173,7 +1174,7 @@ static int msm_adsp_probe(struct platform_device *pdev)
 	}
 
 	msm_adsp_publish_cdevs(adsp_modules, count);
-        rmtask_init();
+	rmtask_init();
 
 	return 0;
 
