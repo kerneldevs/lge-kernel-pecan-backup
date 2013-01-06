@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * All source code in this file is licensed under the following license except
  * where indicated.
@@ -34,6 +34,7 @@
 #include <linux/list.h>
 #include <linux/earlysuspend.h>
 #include <linux/android_pmem.h>
+#include <linux/slab.h>
 #include <asm/atomic.h>
 #include <asm/ioctls.h>
 #include <mach/msm_adsp.h>
@@ -51,7 +52,7 @@
 #include <mach/debug_mm.h>
 
 /* Size must be power of 2 */
-#define BUFSZ_MAX 	4110	/* Includes meta in size */
+#define BUFSZ_MAX	8206	/* Includes meta in size */
 #define BUFSZ_MIN 	2062	/* Includes meta in size */
 #define DMASZ_MAX 	(BUFSZ_MAX * 2)
 #define DMASZ_MIN 	(BUFSZ_MIN * 2)
@@ -148,6 +149,7 @@ struct audio {
 	int stopped; /* set when stopped, cleared on flush */
 	int pcm_feedback;
 	int buf_refresh;
+	int rmt_resource_released;
 	int teos; /* valid only if tunnel mode & no data left for decoder */
 	enum msm_aud_decoder_state dec_state;	/* Represents decoder state */
 	int reserved; /* A byte is being reserved */
@@ -187,8 +189,40 @@ static void audplay_send_data(struct audio *audio, unsigned needed);
 static void audplay_config_hostpcm(struct audio *audio);
 static void audplay_buffer_refresh(struct audio *audio);
 static void audio_dsp_event(void *private, unsigned id, uint16_t *msg);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void audwmapro_post_event(struct audio *audio, int type,
 		union msm_audio_event_payload payload);
+#endif
+
+static int rmt_put_resource(struct audio *audio)
+{
+	struct aud_codec_config_cmd cmd;
+	unsigned short client_idx;
+
+	cmd.cmd_id = RM_CMD_AUD_CODEC_CFG;
+	cmd.client_id = RM_AUD_CLIENT_ID;
+	cmd.task_id = audio->dec_id;
+	cmd.enable = RMT_DISABLE;
+	cmd.dec_type = AUDDEC_DEC_WMAPRO;
+	client_idx = ((cmd.client_id << 8) | cmd.task_id);
+
+	return put_adsp_resource(client_idx, &cmd, sizeof(cmd));
+}
+
+static int rmt_get_resource(struct audio *audio)
+{
+	struct aud_codec_config_cmd cmd;
+	unsigned short client_idx;
+
+	cmd.cmd_id = RM_CMD_AUD_CODEC_CFG;
+	cmd.client_id = RM_AUD_CLIENT_ID;
+	cmd.task_id = audio->dec_id;
+	cmd.enable = RMT_ENABLE;
+	cmd.dec_type = AUDDEC_DEC_WMAPRO;
+	client_idx = ((cmd.client_id << 8) | cmd.task_id);
+
+	return get_adsp_resource(client_idx, &cmd, sizeof(cmd));
+}
 
 /* must be called with audio->lock held */
 static int audio_enable(struct audio *audio)
@@ -200,6 +234,18 @@ static int audio_enable(struct audio *audio)
 	if (audio->enabled)
 		return 0;
 
+	if (audio->rmt_resource_released == 1) {
+		audio->rmt_resource_released = 0;
+		rc = rmt_get_resource(audio);
+		if (rc) {
+			MM_ERR("ADSP resources are not available for WMAPRO \
+				session 0x%08x on decoder: %d\n Ignoring \
+				error and going ahead with the playback\n",
+				(int)audio, audio->dec_id);
+		}
+	}
+
+	audio->dec_state = MSM_AUD_DECODER_STATE_NONE;
 	audio->out_tail = 0;
 	audio->out_needed = 0;
 
@@ -254,6 +300,8 @@ static int audio_disable(struct audio *audio)
 		audpp_disable(audio->dec_id, audio);
 		audmgr_disable(&audio->audmgr);
 		audio->out_needed = 0;
+		rmt_put_resource(audio);
+		audio->rmt_resource_released = 1;
 	}
 	return rc;
 }
@@ -533,36 +581,6 @@ static int audplay_dsp_send_data_avail(struct audio *audio,
 	cmd.buf_size		= len/2;
 	cmd.partition_number	= 0;
 	return audplay_send_queue0(audio, &cmd, sizeof(cmd));
-}
-
-static int rmt_put_resource(struct audio *audio)
-{
-	struct aud_codec_config_cmd cmd;
-	unsigned short client_idx;
-
-	cmd.cmd_id = RM_CMD_AUD_CODEC_CFG;
-	cmd.client_id = RM_AUD_CLIENT_ID;
-	cmd.task_id = audio->dec_id;
-	cmd.enable = RMT_DISABLE;
-	cmd.dec_type = AUDDEC_DEC_WMAPRO;
-	client_idx = ((cmd.client_id << 8) | cmd.task_id);
-
-	return put_adsp_resource(client_idx, &cmd, sizeof(cmd));
-}
-
-static int rmt_get_resource(struct audio *audio)
-{
-	struct aud_codec_config_cmd cmd;
-	unsigned short client_idx;
-
-	cmd.cmd_id = RM_CMD_AUD_CODEC_CFG;
-	cmd.client_id = RM_AUD_CLIENT_ID;
-	cmd.task_id = audio->dec_id;
-	cmd.enable = RMT_ENABLE;
-	cmd.dec_type = AUDDEC_DEC_WMAPRO;
-	client_idx = ((cmd.client_id << 8) | cmd.task_id);
-
-	return get_adsp_resource(client_idx, &cmd, sizeof(cmd));
 }
 
 static void audplay_send_data(struct audio *audio, unsigned needed)
@@ -853,7 +871,6 @@ static long audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case AUDIO_START:
 		MM_DBG("AUDIO_START\n");
-		audio->dec_state = MSM_AUD_DECODER_STATE_NONE;
 		rc = audio_enable(audio);
 		if (!rc) {
 			rc = wait_event_interruptible_timeout(audio->wait,
@@ -1061,7 +1078,7 @@ static long audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 /* Only useful in tunnel-mode */
-static int audio_fsync(struct file *file, struct dentry *dentry, int datasync)
+static int audio_fsync(struct file *file, int datasync)
 {
 	struct audio *audio = file->private_data;
 	struct buffer *frame;
@@ -1382,7 +1399,8 @@ static int audio_release(struct inode *inode, struct file *file)
 	MM_INFO("audio instance 0x%08x freeing\n", (int)audio);
 	mutex_lock(&audio->lock);
 	audio_disable(audio);
-	rmt_put_resource(audio);
+	if (audio->rmt_resource_released == 0)
+		rmt_put_resource(audio);
 	audio_flush(audio);
 	audio_flush_pcm_buf(audio);
 	msm_adsp_put(audio->audplay);
@@ -1408,6 +1426,7 @@ static int audio_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void audwmapro_post_event(struct audio *audio, int type,
 		union msm_audio_event_payload payload)
 {
@@ -1424,6 +1443,7 @@ static void audwmapro_post_event(struct audio *audio, int type,
 		e_node = kmalloc(sizeof(struct audwmapro_event), GFP_ATOMIC);
 		if (!e_node) {
 			MM_ERR("No mem to post event %d\n", type);
+			spin_unlock_irqrestore(&audio->event_queue_lock, flags);
 			return;
 		}
 	}
@@ -1436,7 +1456,6 @@ static void audwmapro_post_event(struct audio *audio, int type,
 	wake_up(&audio->event_wait);
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
 static void audwmapro_suspend(struct early_suspend *h)
 {
 	struct audwmapro_suspend_ctl *ctl =
