@@ -47,6 +47,8 @@
 
 #include "msm_fb_panel.h"
 
+extern int mdp_rev;
+
 #ifdef BIT
 #undef BIT
 #endif
