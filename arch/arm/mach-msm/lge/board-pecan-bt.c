@@ -50,7 +50,7 @@ static unsigned bt_config_power_off[] = {
 	GPIO_CFG(BT_RESET_N, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),	/* RESET_N */	
 };
 
-static int alohag_bluetooth_toggle_radio(void *data, bool state)
+static int pecan_bluetooth_toggle_radio(void *data, bool state)
 {
 	int ret;
 	int (*power_control)(int enable);
@@ -60,7 +60,7 @@ static int alohag_bluetooth_toggle_radio(void *data, bool state)
 	return ret;
 }
 
-static int alohag_bluetooth_power(int on)
+static int pecan_bluetooth_power(int on)
 {
 	int pin, rc;
 
@@ -79,19 +79,14 @@ static int alohag_bluetooth_power(int on)
 				return -EIO;
 			}
 		}
-        //Turn Bluetooth Power On if and only if not turned on by WLAN yet.
-//        if (!gpio_get_value(CONFIG_BCM4325_GPIO_WL_REGON)) //#23
-//		    gpio_set_value(CONFIG_BCM4325_GPIO_WL_REGON, 1); //#23
-//		mdelay(100);
+
 		gpio_set_value(BT_RESET_N, 0);
 		mdelay(100);
 		gpio_set_value(BT_RESET_N, 1);
 		mdelay(100);
 
 	} else {
-        //Turn Bluetooth Power Off if and only if not used by WLAN anymore.
-//        if (!gpio_get_value(CONFIG_BCM4325_GPIO_WL_RESET)) //#93
-//         gpio_set_value(CONFIG_BCM4325_GPIO_WL_REGON, 0); //#23
+
 
 		gpio_set_value(BT_RESET_N, 0);
 		for (pin = 0; pin < ARRAY_SIZE(bt_config_power_off); pin++) {
@@ -108,28 +103,22 @@ static int alohag_bluetooth_power(int on)
 	return 0;
 }
 
-static struct bluetooth_platform_data alohag_bluetooth_data = {
-	.bluetooth_power = alohag_bluetooth_power,
-	.bluetooth_toggle_radio = alohag_bluetooth_toggle_radio,
+static struct bluetooth_platform_data pecan_bluetooth_data = {
+	.bluetooth_power = pecan_bluetooth_power,
+	.bluetooth_toggle_radio = pecan_bluetooth_toggle_radio,
 };
 
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 	.dev = {
-		.platform_data = &alohag_bluetooth_data,
+		.platform_data = &pecan_bluetooth_data,
 	},		
 };
 
 
 static void __init bt_power_init(void)
 {
-/* LGE_CHANGE_S, [kidong0420.kim@lge.com] , 2010-06-18, for current consumption*/
-  //MI thunderc_bluetooth_power(1);
-//  gpio_set_value(23, 1);
-//  ssleep(1); /* 1 sec */
-  //MI thunderc_bluetooth_power(0);
-//  gpio_set_value(23, 0);
-/* LGE_CHANGE_E, [kidong0420.kim@lge.com] , 2010-06-18, for current consumption*/
+
 }
 #else
 #define bt_power_init(x) do {} while (0)
@@ -156,7 +145,7 @@ static struct resource bluesleep_resources[] = {
 	},
 };
 
-static struct bluesleep_platform_data alohag_bluesleep_data = {
+static struct bluesleep_platform_data pecan_bluesleep_data = {
 	.bluetooth_port_num = 0,
 };
 
@@ -166,7 +155,7 @@ static struct platform_device msm_bluesleep_device = {
 	.num_resources	= ARRAY_SIZE(bluesleep_resources),
 	.resource	= bluesleep_resources,
 	.dev = {
-		.platform_data = &alohag_bluesleep_data,
+		.platform_data = &pecan_bluesleep_data,
 	},	
 };
 
