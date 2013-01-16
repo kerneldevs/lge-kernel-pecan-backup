@@ -111,7 +111,7 @@ struct msm_pm_platform_data msm7x27_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 struct usb_composition usb_func_composition[] = {
 	{
 		/* Mass Storage only mode : UMS
-		 * PID is dedicated for Thunder Global
+		 * PID is dedicated for pecan Global
 		 */
 		.product_id         = 0x61C5,
 		.functions	    	= 0x2,
@@ -228,7 +228,7 @@ static void msm7x27_wlan_init(void)
 	}
 }
 
-/* decrease FB pmem size because thunderg uses hvga
+/* decrease FB pmem size because pecan uses Qvga
  * qualcomm's original value depends on wvga resolution
  * 2010-04-18, cleaneye.kim@lge.com
  */

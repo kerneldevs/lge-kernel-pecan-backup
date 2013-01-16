@@ -106,11 +106,7 @@ int pecan_matrix_info_wrapper(struct gpio_event_input_devs *input_dev, struct gp
 static int pecan_gpio_matrix_power(
                 const struct gpio_event_platform_data *pdata, bool on)
 {
-	/* this is dummy function to make gpio_event driver register suspend function
-	 * 2010-01-29, cleaneye.kim@lge.com
-	 * copy from ALOHA code
-	 * 2010-04-22 younchan.kim@lge.com
-	 */
+
 
 	return 0;
 }
@@ -182,7 +178,7 @@ static struct platform_device *pecan_input_devices[] __initdata = {
 	&atcmd_virtual_device,
 };
 
-/* MCS6000 Touch */
+/* MCS7000 Touch */
 static struct gpio_i2c_pin ts_i2c_pin[] = {
 	[0] = {
 		.sda_pin	= TS_GPIO_I2C_SDA,

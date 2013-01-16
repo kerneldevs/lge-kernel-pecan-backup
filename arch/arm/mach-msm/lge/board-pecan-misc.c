@@ -234,7 +234,6 @@ int pecan_vibrator_pwm_set(int enable, int amp)
 
 int pecan_vibrator_ic_enable_set(int enable)
 {
-	/* nothing to do, thunder does not using Motor Enable pin */
 	return 0;
 }
 

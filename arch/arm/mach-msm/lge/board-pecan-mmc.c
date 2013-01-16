@@ -282,7 +282,7 @@ static unsigned int pecan_sdcc_slot_status(struct device *dev)
 }
 #endif
 
-/* LGE_CHANGE_S [jisung.yang@lge.com] 2010-04-24, BCM4325 control gpio */
+/* LGE_CHANGE_S [jisung.yang@lge.com] 2010-04-24, BCM4329 control gpio */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 static unsigned int bcm432x_sdcc_wlan_slot_status(struct device *dev)
 {
@@ -303,7 +303,7 @@ static struct mmc_platform_data bcm432x_sdcc_wlan_data = {
 	.nonremovable	= 1,
 };
 #endif  /* CONFIG_LGE_BCM432X_PATCH*/
-/* LGE_CHANGE_E [jisung.yang@lge.com] 2010-04-24, BCM4325 control gpio */
+/* LGE_CHANGE_E [jisung.yang@lge.com] 2010-04-24, BCM4329 control gpio */
 
 static struct mmc_platform_data msm7x2x_sdcc_data = {
 #ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
@@ -341,7 +341,7 @@ static void __init msm7x2x_init_mmc(void)
 #endif	
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 
-/* LGE_CHANGE_S [jisung.yang@lge.com] 2010-04-24, BCM4325 control */
+/* LGE_CHANGE_S [jisung.yang@lge.com] 2010-04-24, BCM4329 control */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 
 	/* GPIO config */
@@ -366,7 +366,7 @@ static void __init msm7x2x_init_mmc(void)
 #else /* qualcomm or google */
     msm_add_sdcc(2, &msm7x2x_sdcc_data);
 #endif /* CONFIG_LGE_BCM432X_PATCH */
-/* LGE_CHANGE_E [jisung.yang@lge.com] 2010-04-24, BCM4325 control */
+/* LGE_CHANGE_E [jisung.yang@lge.com] 2010-04-24, BCM4329 control */
 
 #endif
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
