@@ -1,5 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
- * Copyright (C) 2011 Sony Ericsson Mobile Communications AB.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,8 +21,11 @@
 #include "kgsl_mmu.h"
 #include "kgsl_device.h"
 #include "kgsl_sharedmem.h"
-
 #include "adreno_ringbuffer.h"
+
+#define KGSL_PAGETABLE_SIZE \
+	ALIGN(KGSL_PAGETABLE_ENTRIES(CONFIG_MSM_KGSL_PAGE_TABLE_SIZE) * \
+	KGSL_PAGETABLE_ENTRY_SIZE, PAGE_SIZE)
 
 static ssize_t
 sysfs_show_ptpool_entries(struct kobject *kobj,
@@ -313,16 +315,15 @@ void kgsl_gpummu_ptpool_destroy(void *ptpool)
 /**
  * kgsl_ptpool_init
  * @pool:  A pointer to a ptpool structure to initialize
- * @ptsize: The size of each pagetable entry
  * @entries:  The number of inital entries to add to the pool
  *
  * Initalize a pool and allocate an initial chunk of entries.
  */
-void *kgsl_gpummu_ptpool_init(int ptsize, int entries)
+void *kgsl_gpummu_ptpool_init(int entries)
 {
+	int ptsize = KGSL_PAGETABLE_SIZE;
 	struct kgsl_ptpool *pool;
 	int ret = 0;
-	BUG_ON(ptsize == 0);
 
 	pool = kzalloc(sizeof(struct kgsl_ptpool), GFP_KERNEL);
 	if (!pool) {
@@ -357,8 +358,8 @@ err_ptpool_remove:
 int kgsl_gpummu_pt_equal(struct kgsl_pagetable *pt,
 					unsigned int pt_base)
 {
-	struct kgsl_gpummu_pt *gpummu_pt = pt->priv;
-	return pt && pt_base && (gpummu_pt->base.gpuaddr == pt_base);
+	struct kgsl_gpummu_pt *gpummu_pt = pt ? pt->priv : NULL;
+	return gpummu_pt && pt_base && (gpummu_pt->base.gpuaddr == pt_base);
 }
 
 void kgsl_gpummu_destroy_pagetable(void *mmu_specific_pt)
@@ -385,26 +386,27 @@ static inline void
 kgsl_pt_map_set(struct kgsl_gpummu_pt *pt, uint32_t pte, uint32_t val)
 {
 	uint32_t *baseptr = (uint32_t *)pt->base.hostptr;
-
-	writel_relaxed(val, &baseptr[pte]);
+	BUG_ON(pte*sizeof(uint32_t) >= pt->base.size);
+	baseptr[pte] = val;
 }
 
 static inline uint32_t
 kgsl_pt_map_get(struct kgsl_gpummu_pt *pt, uint32_t pte)
 {
 	uint32_t *baseptr = (uint32_t *)pt->base.hostptr;
-	return readl_relaxed(&baseptr[pte]) & GSL_PT_PAGE_ADDR_MASK;
+	BUG_ON(pte*sizeof(uint32_t) >= pt->base.size);
+	return baseptr[pte] & GSL_PT_PAGE_ADDR_MASK;
 }
 
 static unsigned int kgsl_gpummu_pt_get_flags(struct kgsl_pagetable *pt,
 				enum kgsl_deviceid id)
 {
 	unsigned int result = 0;
-	struct kgsl_gpummu_pt *gpummu_pt = (struct kgsl_gpummu_pt *)
-						pt->priv;
+	struct kgsl_gpummu_pt *gpummu_pt;
 
 	if (pt == NULL)
 		return 0;
+	gpummu_pt = pt->priv;
 
 	spin_lock(&pt->lock);
 	if (gpummu_pt->tlb_flags && (1<<id)) {
@@ -684,7 +686,7 @@ kgsl_gpummu_map(void *mmu_specific_pt,
 		flushtlb = 1;
 
 	for_each_sg(memdesc->sg, s, memdesc->sglen, i) {
-		unsigned int paddr = sg_phys(s);
+		unsigned int paddr = kgsl_get_sg_pa(s);
 		unsigned int j;
 
 		/* Each sg entry might be multiple pages long */
