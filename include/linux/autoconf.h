@@ -2,10 +2,14 @@
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
 <<<<<<< HEAD
+<<<<<<< HEAD
  * Wed Dec 12 20:37:14 2012
 =======
  * Sun Jan  6 11:01:24 2013
 >>>>>>> c834a90... msm: adsp: qdsp5:  updates from caf
+=======
+ * Thu Jan 17 14:47:42 2013
+>>>>>>> 9ab685f... Update 3.8 KSGL drivers with latets changes From CAF
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
