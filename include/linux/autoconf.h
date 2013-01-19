@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
- * Sun Jan 20 00:32:22 2013
+ * Sun Jan 20 00:47:33 2013
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
@@ -107,6 +107,7 @@
 #define CONFIG_EXT2_FS 1
 #define CONFIG_INPUT_MISC 1
 #define CONFIG_EXT3_FS 1
+#define CONFIG_FB_MSM_TRIPLE_BUFFER 1
 #define CONFIG_VT_CONSOLE 1
 #define CONFIG_NF_CONNTRACK_SANE 1
 #define CONFIG_CRYPTO_DES 1
