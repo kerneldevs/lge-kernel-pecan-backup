@@ -5,6 +5,8 @@ ARCH=$2
 SMP=$3
 PREEMPT=$4
 CC=$5
+BUILD_USER=PecanCM
+BUILD_HOST=pinky
 
 vecho() { [ "${quiet}" = "silent_" ] || echo "$@" ; }
 
