@@ -46,7 +46,11 @@
 #if defined(CONFIG_MACH_MSM7X27_PECAN) || defined(CONFIG_MACH_MSM7X27_HAZEL)
 /* TODO: optimization needed, pmem_mdp is reduced for qvga by bongkyu.kim */
 #define MSM_PMEM_MDP_SIZE	0x1076000 /* 23->12MB + 4.46 MB */
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+#define MSM_FB_SIZE		0x233000
+#else
 #define MSM_FB_SIZE		0x50000
+#endif
 #else
 #define MSM_PMEM_MDP_SIZE	0x1B76000
 #define MSM_FB_SIZE		0x177000
