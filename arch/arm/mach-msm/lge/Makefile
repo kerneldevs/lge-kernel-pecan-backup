@@ -32,6 +32,20 @@ obj-$(CONFIG_MACH_MSM7X27_PECAN) += lge_errorhandler.o #LGE_CHANGE [blue.park@lg
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += lge_temp.o # LGE_CHANGE neo.kang@lge.com just for Line PV. It will be removed
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += lge_mtd_direct_access.o # LGE_CHANGE neo.kang@lge.com just for Line PV. It will be removed.
 
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-mmc.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-snd.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-panel.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-bt.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-camera.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-input.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-misc.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += board-hazel-pm.o
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += lge_errorhandler.o #LGE_CHANGE [blue.park@lge.com] 2009-04-04 <For Error Handler>
+
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += lge_temp.o # LGE_CHANGE neo.kang@lge.com just for Line PV. It will be removed
+obj-$(CONFIG_MACH_MSM7X27_HAZEL) += lge_mtd_direct_access.o # LGE_CHANGE neo.kang@lge.com just for Line PV. It will be removed.
+
 obj-$(CONFIG_MACH_LGE) += devices_lge.o
 
 obj-$(CONFIG_LGE_SUPPORT_AT_CMD) += lge_ats.o

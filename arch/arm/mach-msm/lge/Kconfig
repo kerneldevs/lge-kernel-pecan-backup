@@ -13,6 +13,14 @@ config MACH_MSM7X27_PECAN
 	help
 	  Support for the LGE MSM7x27 PECAN board.
 
+config MACH_MSM7X27_HAZEL
+	depends on ARCH_MSM7X27
+	depends on !MSM_STACKED_MEMORY
+	select MACH_LGE
+	bool "MSM7x27 HAZEL"
+	help
+	  Support for the LGE MSM7x27 HAZEL board.
+
 endmenu
 
 config LGE_SUPPORT_ERS
