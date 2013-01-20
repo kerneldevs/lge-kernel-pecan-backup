@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -231,6 +231,8 @@ static void cffdump_printline(int id, uint opcode, uint op1, uint op2,
 
 	spin_lock(&cffdump_lock);
 	if (opcode == CFF_OP_WRITE_MEM) {
+		if (op1 < 0x40000000 || op1 >= 0x60000000)
+			KGSL_CORE_ERR("addr out-of-range: op1=%08x", op1);
 		if ((cff_op_write_membuf.addr != op1 &&
 			cff_op_write_membuf.count)
 			|| (cff_op_write_membuf.count == MEMBUF_SIZE))
@@ -358,8 +360,16 @@ void kgsl_cffdump_destroy()
 
 void kgsl_cffdump_open(enum kgsl_deviceid device_id)
 {
-	kgsl_cffdump_memory_base(device_id, KGSL_PAGETABLE_BASE,
-			kgsl_mmu_get_ptsize(), SZ_256K);
+	/*TODO: move this to where we can report correct gmemsize*/
+	unsigned int va_base;
+
+	if (cpu_is_msm8x60() || cpu_is_msm8960() || cpu_is_msm8930())
+		va_base = 0x40000000;
+	else
+		va_base = 0x20000000;
+
+	kgsl_cffdump_memory_base(device_id, va_base,
+			CONFIG_MSM_KGSL_PAGE_TABLE_SIZE, SZ_256K);
 }
 
 void kgsl_cffdump_memory_base(enum kgsl_deviceid device_id, unsigned int base,
@@ -391,6 +401,8 @@ void kgsl_cffdump_syncmem(struct kgsl_device_private *dev_priv,
 	bool clean_cache)
 {
 	const void *src;
+	uint host_size;
+	uint physaddr;
 
 	if (!kgsl_cff_dump_enable)
 		return;
@@ -410,9 +422,13 @@ void kgsl_cffdump_syncmem(struct kgsl_device_private *dev_priv,
 		}
 		memdesc = &entry->memdesc;
 	}
-	src = (uint *)kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr);
-	if (memdesc->hostptr == NULL) {
-		KGSL_CORE_ERR("no kernel mapping for "
+	BUG_ON(memdesc->gpuaddr == 0);
+	BUG_ON(gpuaddr == 0);
+	physaddr = kgsl_get_realaddr(memdesc) + (gpuaddr - memdesc->gpuaddr);
+
+	src = kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr, &host_size);
+	if (src == NULL || host_size < sizebytes) {
+		KGSL_CORE_ERR("did not find mapping for "
 			"gpuaddr: 0x%08x, m->host: 0x%p, phys: 0x%08x\n",
 			gpuaddr, memdesc->hostptr, memdesc->physaddr);
 		return;
@@ -428,6 +444,7 @@ void kgsl_cffdump_syncmem(struct kgsl_device_private *dev_priv,
 				KGSL_CACHE_OP_INV);
 	}
 
+	BUG_ON(physaddr > 0x66000000 && physaddr < 0x66ffffff);
 	while (sizebytes > 3) {
 		cffdump_printline(-1, CFF_OP_WRITE_MEM, gpuaddr, *(uint *)src,
 			0, 0, 0);
@@ -445,6 +462,7 @@ void kgsl_cffdump_setmem(uint addr, uint value, uint sizebytes)
 	if (!kgsl_cff_dump_enable)
 		return;
 
+	BUG_ON(addr > 0x66000000 && addr < 0x66ffffff);
 	while (sizebytes > 3) {
 		/* Use 32bit memory writes as long as there's at least
 		 * 4 bytes left */
@@ -557,6 +575,7 @@ bool kgsl_cffdump_parse_ibs(struct kgsl_device_private *dev_priv,
 {
 	static uint level; /* recursion level */
 	bool ret = true;
+	uint host_size;
 	uint *hostaddr, *hoststart;
 	int dwords_left = sizedwords; /* dwords left in the current command
 					 buffer */
@@ -577,9 +596,10 @@ bool kgsl_cffdump_parse_ibs(struct kgsl_device_private *dev_priv,
 		}
 		memdesc = &entry->memdesc;
 	}
-	hostaddr = (uint *)kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr);
+
+	hostaddr = (uint *)kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr, &host_size);
 	if (hostaddr == NULL) {
-		KGSL_CORE_ERR("no kernel mapping for "
+		KGSL_CORE_ERR("did not find mapping for "
 			"gpuaddr: 0x%08x\n", gpuaddr);
 		return true;
 	}
@@ -588,9 +608,14 @@ bool kgsl_cffdump_parse_ibs(struct kgsl_device_private *dev_priv,
 
 	level++;
 
-	mb();
-	kgsl_cache_range_op((struct kgsl_memdesc *)memdesc,
+	if (!memdesc->physaddr) {
+		KGSL_CORE_ERR("no physaddr");
+	} else {
+		mb();
+		kgsl_cache_range_op((struct kgsl_memdesc *)memdesc,
 				KGSL_CACHE_OP_INV);
+	}
+
 #ifdef DEBUG
 	pr_info("kgsl: cffdump: ib: gpuaddr:0x%08x, wc:%d, hptr:%p\n",
 		gpuaddr, sizedwords, hostaddr);
