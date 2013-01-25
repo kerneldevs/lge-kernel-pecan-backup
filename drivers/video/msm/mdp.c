@@ -249,7 +249,10 @@ static int mdp_do_histogram(struct fb_info *info, struct mdp_histogram *hist)
 #endif
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
-	wait_for_completion_killable(&mdp_hist_comp);
+	if (wait_for_completion_killable(&mdp_hist_comp)) {
+		pr_err("%s(): histogram bin collection killed", __func__);
+		return -EINVAL;
+	}
 
 	/* disable the irq for histogram since we handled it
 	   when the control reaches here */
