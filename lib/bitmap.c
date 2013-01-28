@@ -420,7 +420,7 @@ EXPORT_SYMBOL(bitmap_clear);*/
 again:
 	index = find_next_zero_bit(map, size, start);
 
-	/* Align allocation */
+	/ Align allocation */
 	/*index = __ALIGN_MASK(index, align_mask);
 
 	end = index + nr;
