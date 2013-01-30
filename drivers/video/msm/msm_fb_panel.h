@@ -98,6 +98,9 @@ struct mddi_panel_info {
 struct msm_panel_info {
 	__u32 xres;
 	__u32 yres;
+        __u32 mode2_xres;
+        __u32 mode2_yres;
+        __u32 mode2_bpp;
 	__u32 bpp;
 	__u32 type;
 	__u32 wait_cycle;
