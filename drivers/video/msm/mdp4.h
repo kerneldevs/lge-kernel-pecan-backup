@@ -165,10 +165,10 @@ enum {
 	MDP4_MIXER_STAGE_BASE,
 	MDP4_MIXER_STAGE0,	/* zorder 0 */
 	MDP4_MIXER_STAGE1,	/* zorder 1 */
-	MDP4_MIXER_STAGE2	/* zorder 2 */
+	MDP4_MIXER_STAGE2,  /* zorder 2 */
+        MDP4_MIXER_STAGE_MAX
 };
 
-#define MDP4_MAX_STAGE	4
 
 enum {
 	MDP4_FRAME_FORMAT_LINEAR,
@@ -438,6 +438,8 @@ void mdp4_mixer_gc_lut_setup(int mixer_num);
 void mdp4_fetch_cfg(uint32 clk);
 uint32 mdp4_rgb_igc_lut_cvt(uint32 ndx);
 void mdp4_vg_qseed_init(int);
+
+int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info);
 
 #ifdef MDP4_MDDI_DMA_SWITCH
 void mdp_dmap_vsync_set(int enable);
