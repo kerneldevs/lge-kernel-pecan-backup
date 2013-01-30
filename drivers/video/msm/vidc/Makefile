@@ -22,7 +22,6 @@ vidc-objs :=	common/init/vidc_init.o \
 		common/vcd/vcd_device_sm.o \
 		common/vcd/vcd_scheduler.o \
 		common/vcd/vcd_sub.o \
-		common/vcd/vcd_util.o
 
 ifdef CONFIG_MSM_VIDC_720P
 vidc-objs +=	720p/ddl/vcd_ddl_firmware.o \
@@ -49,6 +48,7 @@ vidc-objs +=	1080p/ddl/vcd_ddl_helper.o \
 		1080p/ddl/vidc_pix_cache.o \
 		1080p/ddl/vcd_ddl_vidc.o \
 		1080p/ddl/vcd_ddl.o \
+		1080p/ddl/vcd_ddl_metadata.o \
 		1080p/resource_tracker/vcd_res_tracker.o
 endif
 

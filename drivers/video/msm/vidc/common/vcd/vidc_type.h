@@ -39,21 +39,16 @@
 #include <linux/dma-mapping.h>
 #include <linux/android_pmem.h>
 
-#define TRUE 	1
-#define FALSE	0
-
 #define DEBUG   0
 
 #define USE_RES_TRACKER
-#define AXI_CLK_SCALING
+#undef  CORE_TIMING_INFO
 
-#undef CORE_TIMING_INFO
 #ifdef CONFIG_KERNEL_PMEM_SMI_REGION
 #define PMEM_MEMTYPE   PMEM_MEMTYPE_SMI
 #else
 #define PMEM_MEMTYPE   PMEM_MEMTYPE_EBI1
 #endif
 
-#define ENA_CLK_GATE 0
-
+#define VIDC_1080p_DISABLE_GATING
 #endif

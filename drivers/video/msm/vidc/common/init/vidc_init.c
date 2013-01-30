@@ -31,14 +31,15 @@
 #include <linux/workqueue.h>
 #include <linux/android_pmem.h>
 #include <linux/clk.h>
-#include <linux/firmware.h>
 #include <linux/delay.h>
 #include <mach/internal_power_rail.h>
 #include <mach/clk.h>
+#include <linux/pm_runtime.h>
 
 #include "vcd_api.h"
 #include "vidc_init_internal.h"
 #include "vidc_init.h"
+#include "vcd_res_tracker_api.h"
 
 #if DEBUG
 #define DBG(x...) printk(KERN_DEBUG x)
@@ -66,33 +67,16 @@ struct workqueue_struct *vidc_timer_wq;
 static irqreturn_t vidc_isr(int irq, void *dev);
 static spinlock_t vidc_spin_lock;
 
-#define FEATURE_VIDC_1080P
-
-#ifdef FEATURE_VIDC_720P
-#define VIDC_BOOT_FW			"vidc_720p_command_control.fw"
-#define VIDC_MPG4_DEC_FW		"vidc_720p_mp4_dec_mc.fw"
-#define VIDC_H263_DEC_FW		"vidc_720p_h263_dec_mc.fw"
-#define VIDC_H264_DEC_FW		"vidc_720p_h264_dec_mc.fw"
-#define VIDC_MPG4_ENC_FW		"vidc_720p_mp4_enc_mc.fw"
-#define VIDC_H264_ENC_FW		"vidc_720p_h264_enc_mc.fw"
-#define VIDC_VC1_DEC_FW		        "vidc_720p_vc1_dec_mc.fw"
-#endif
-
-#ifdef FEATURE_VIDC_1080P
-#define VIDC_BOOT_FW			"vidc_1080p.fw"
-#endif
-
 static void vidc_timer_fn(unsigned long data)
 {
 	unsigned long flag;
 	struct vidc_timer *hw_timer = NULL;
-
-	DBG("%s() Timer expired \n", __func__);
+	DBG("%s() Timer expired\n", __func__);
 	spin_lock_irqsave(&vidc_spin_lock, flag);
 	hw_timer = (struct vidc_timer *)data;
 	list_add_tail(&hw_timer->list, &vidc_device_p->vidc_timer_queue);
 	spin_unlock_irqrestore(&vidc_spin_lock, flag);
-	DBG("Queue the work for timer \n");
+	DBG("Queue the work for timer\n");
 	queue_work(vidc_timer_wq, &vidc_device_p->vidc_timer_worker);
 }
 
@@ -102,7 +86,7 @@ static void vidc_timer_handler(struct work_struct *work)
 	u32 islist_empty = 0;
 	struct vidc_timer *hw_timer = NULL;
 
-	DBG("%s() Timer expired \n", __func__);
+	DBG("%s() Timer expired\n", __func__);
 	do {
 		spin_lock_irqsave(&vidc_spin_lock, flag);
 		islist_empty = list_empty(&vidc_device_p->vidc_timer_queue);
@@ -129,7 +113,7 @@ static void vidc_work_handler(struct work_struct *work)
 
 static DECLARE_WORK(vidc_work, vidc_work_handler);
 
-static int __init vidc_720p_probe(struct platform_device *pdev)
+static int __devinit vidc_720p_probe(struct platform_device *pdev)
 {
 	struct resource *resource;
 	DBG("Enter %s()\n", __func__);
@@ -147,7 +131,7 @@ static int __init vidc_720p_probe(struct platform_device *pdev)
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (unlikely(!resource)) {
-		ERR("%s(): Invalid resource \n", __func__);
+		ERR("%s(): Invalid resource\n", __func__);
 		return -ENXIO;
 	}
 
@@ -164,9 +148,11 @@ static int __init vidc_720p_probe(struct platform_device *pdev)
 
 	vidc_wq = create_singlethread_workqueue("vidc_worker_queue");
 	if (!vidc_wq) {
-		ERR("%s: create workque failed \n", __func__);
+		ERR("%s: create workque failed\n", __func__);
 		return -ENOMEM;
 	}
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 	return 0;
 }
 
@@ -176,15 +162,34 @@ static int __devexit vidc_720p_remove(struct platform_device *pdev)
 		ERR("Invalid plaform device ID = %d\n", pdev->id);
 		return -EINVAL;
 	}
+	pm_runtime_disable(&pdev->dev);
+
 	return 0;
 }
 
+static int vidc_runtime_suspend(struct device *dev)
+{
+	dev_dbg(dev, "pm_runtime: suspending...\n");
+	return 0;
+}
+
+static int vidc_runtime_resume(struct device *dev)
+{
+	dev_dbg(dev, "pm_runtime: resuming...\n");
+	return 0;
+}
+
+static const struct dev_pm_ops vidc_dev_pm_ops = {
+	.runtime_suspend = vidc_runtime_suspend,
+	.runtime_resume = vidc_runtime_resume,
+};
 
 static struct platform_driver msm_vidc_720p_platform_driver = {
 	.probe = vidc_720p_probe,
 	.remove = vidc_720p_remove,
 	.driver = {
-				.name = "msm_vidc",
+		.name = "msm_vidc",
+		.pm   = &vidc_dev_pm_ops,
 	},
 };
 
@@ -261,25 +266,23 @@ static int __init vidc_init(void)
 		ERR("%s() :request_irq failed\n", __func__);
 		goto error_vidc_platfom_register;
 	}
-
+	res_trk_init(vidc_device_p->device, vidc_device_p->irq);
 	vidc_timer_wq = create_singlethread_workqueue("vidc_timer_wq");
 	if (!vidc_timer_wq) {
-		ERR("%s: create workque failed \n", __func__);
+		ERR("%s: create workque failed\n", __func__);
 		rc = -ENOMEM;
 		goto error_vidc_platfom_register;
 	}
-
 	DBG("Disabling IRQ in %s()\n", __func__);
 	disable_irq_nosync(vidc_device_p->irq);
 	INIT_WORK(&vidc_device_p->vidc_timer_worker,
 			  vidc_timer_handler);
 	spin_lock_init(&vidc_spin_lock);
 	INIT_LIST_HEAD(&vidc_device_p->vidc_timer_queue);
-	vidc_device_p->clock_enabled = 0;
+
 	vidc_device_p->ref_count = 0;
 	vidc_device_p->firmware_refcount = 0;
 	vidc_device_p->get_firmware = 0;
-
 	return 0;
 
 error_vidc_platfom_register:
@@ -301,635 +304,22 @@ void __iomem *vidc_get_ioaddr(void)
 	return (u8 *)vidc_device_p->virt_base;
 }
 EXPORT_SYMBOL(vidc_get_ioaddr);
-#ifdef USE_RES_TRACKER
-
-u32 vidc_enable_pwr_rail(void)
-{
-	mutex_lock(&vidc_device_p->lock);
-
-	if (!vidc_device_p->rail_enabled) {
-#ifdef FEATURE_VIDC_720P
-		int rc = -1;
-		rc = internal_pwr_rail_mode(PWR_RAIL_MFC_CLK,
-			PWR_RAIL_CTL_MANUAL);
-		if (rc) {
-			ERR("%s(): internal_pwr_rail_mode failed %d \n",
-				__func__, rc);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-		DBG("%s(): internal_pwr_rail_mode Success %d \n",
-			__func__, rc);
-
-		vidc_device_p->pclk = clk_get(vidc_device_p->device,
-			"mfc_pclk");
-
-		if (IS_ERR(vidc_device_p->pclk)) {
-			ERR("%s(): mfc_pclk get failed \n", __func__);
-
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		vidc_device_p->hclk = clk_get(vidc_device_p->device,
-			"mfc_clk");
-
-		if (IS_ERR(vidc_device_p->hclk)) {
-			ERR("%s(): mfc_clk get failed \n", __func__);
-
-			clk_put(vidc_device_p->pclk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		vidc_device_p->hclk_div2 =
-			clk_get(vidc_device_p->device, "mfc_div2_clk");
-
-		if (IS_ERR(vidc_device_p->pclk)) {
-			ERR("%s(): mfc_div2_clk get failed \n", __func__);
-
-			clk_put(vidc_device_p->pclk);
-			clk_put(vidc_device_p->hclk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		rc = internal_pwr_rail_ctl(PWR_RAIL_MFC_CLK, 1);
-		if (rc) {
-			ERR("\n internal_pwr_rail_ctl failed %d\n", rc);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-		DBG("%s(): internal_pwr_rail_ctl Success %d \n", __func__, rc);
-		msleep(20);
-
-		rc = clk_reset(vidc_device_p->pclk, CLK_RESET_DEASSERT);
-		if (rc) {
-			ERR("\n clk_reset failed %d\n", rc);
-			return FALSE;
-		}
-		msleep(20);
-#endif
-#ifdef FEATURE_VIDC_1080P
-		vidc_device_p->vcodec_clk =
-			clk_get(vidc_device_p->device, "vcodec_clk");
-
-		if (IS_ERR(vidc_device_p->vcodec_clk)) {
-			ERR("%s(): vcodec_clk get failed \n", __func__);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-		/* Need to add the power rail enable*/
-		/*
-		we may need to add the clock reset if the vdc clock defines
-		reset with CLK_RESET_DEASSERT
-		msleep(20);
-		*/
-#endif
-	}
-	vidc_device_p->rail_enabled = 1;
-	mutex_unlock(&vidc_device_p->lock);
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_enable_pwr_rail);
-
-u32 vidc_disable_pwr_rail(void)
-{
-	mutex_lock(&vidc_device_p->lock);
-
-	if (vidc_device_p->clock_enabled) {
-		mutex_unlock(&vidc_device_p->lock);
-		DBG("\n Calling CLK disable in Power Down \n");
-		vidc_disable_clk();
-		mutex_lock(&vidc_device_p->lock);
-	}
-
-	if (!vidc_device_p->rail_enabled) {
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-
-	vidc_device_p->rail_enabled = 0;
-#ifdef FEATURE_VIDC_720P
-	{
-		int rc = -1;
-	rc = clk_reset(vidc_device_p->pclk, CLK_RESET_ASSERT);
-	if (rc) {
-		ERR("\n clk_reset failed %d\n", rc);
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-	msleep(20);
-
-	rc = internal_pwr_rail_ctl(PWR_RAIL_MFC_CLK, 0);
-	if (rc) {
-		ERR("\n clk_reset failed %d\n", rc);
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-
-	clk_put(vidc_device_p->hclk_div2);
-	clk_put(vidc_device_p->hclk);
-	clk_put(vidc_device_p->pclk);
-	}
-#endif
-#ifdef FEATURE_VIDC_1080P
-	/*
-	we may need to add the clock reset if the vdc clock defines
-	reset with CLK_RESET_ASSERT
-	msleep(20);
-	*/
-	/* Need to add the power rail disable*/
-	clk_put(vidc_device_p->vcodec_clk);
-#endif
-	mutex_unlock(&vidc_device_p->lock);
-
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_disable_pwr_rail);
-
-u32 vidc_enable_clk(void)
-{
-	mutex_lock(&vidc_device_p->lock);
-
-	if (!vidc_device_p->clock_enabled) {
-		DBG("Enabling IRQ in %s()\n", __func__);
-		enable_irq(vidc_device_p->irq);
-
-		DBG("%s(): Enabling the clocks ...\n", __func__);
-#ifdef FEATURE_VIDC_720P
-		if (clk_enable(vidc_device_p->pclk)) {
-			ERR("vidc pclk Enable failed \n");
-
-			clk_put(vidc_device_p->hclk);
-			clk_put(vidc_device_p->hclk_div2);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		if (clk_enable(vidc_device_p->hclk)) {
-			ERR("vidc  hclk Enable failed \n");
-			clk_put(vidc_device_p->pclk);
-			clk_put(vidc_device_p->hclk_div2);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		if (clk_enable(vidc_device_p->hclk_div2)) {
-			ERR("vidc  hclk Enable failed \n");
-			clk_put(vidc_device_p->hclk);
-			clk_put(vidc_device_p->pclk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-#endif
-#ifdef FEATURE_VIDC_1080P
-		if (clk_enable(vidc_device_p->vcodec_clk)) {
-			ERR("vidc  vcodec clk Enable failed \n");
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-#endif
-	}
-
-	vidc_device_p->clock_enabled = 1;
-	mutex_unlock(&vidc_device_p->lock);
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_enable_clk);
-
-u32 vidc_sel_clk_rate(unsigned long hclk_rate)
-{
-	mutex_lock(&vidc_device_p->lock);
-#ifdef FEATURE_VIDC_720P
-
-	if (clk_set_rate(vidc_device_p->hclk,
-		hclk_rate)) {
-		ERR("vidc hclk set rate failed \n");
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-	vidc_device_p->hclk_rate = hclk_rate;
-#endif
-#ifdef FEATURE_VIDC_1080P
-	if (clk_set_rate(vidc_device_p->vcodec_clk,
-		hclk_rate)) {
-		ERR("vidc vcodec_clk set rate failed \n");
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-	vidc_device_p->hclk_rate = hclk_rate;
-#endif
-	mutex_unlock(&vidc_device_p->lock);
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_sel_clk_rate);
-
-u32 vidc_get_clk_rate(unsigned long *phclk_rate)
-{
-	if (!phclk_rate) {
-		ERR("vidc_get_clk_rate(): phclk_rate is NULL\n");
-		return FALSE;
-	}
-	mutex_lock(&vidc_device_p->lock);
-#ifdef FEATURE_VIDC_720P
-	*phclk_rate = clk_get_rate(vidc_device_p->hclk);
-#endif
-#ifdef FEATURE_VIDC_1080P
-	*phclk_rate = clk_get_rate(vidc_device_p->vcodec_clk);
-#endif
-
-	if (!(*phclk_rate)) {
-		ERR("vidc hclk get rate failed \n");
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-	mutex_unlock(&vidc_device_p->lock);
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_get_clk_rate);
-
-u32 vidc_disable_clk(void)
-{
-	mutex_lock(&vidc_device_p->lock);
-
-	if (!vidc_device_p->clock_enabled) {
-		mutex_unlock(&vidc_device_p->lock);
-		return FALSE;
-	}
-
-	DBG("Disabling IRQ in %s()\n", __func__);
-	disable_irq_nosync(vidc_device_p->irq);
-	DBG("%s(): Disabling the clocks ...\n", __func__);
-
-	vidc_device_p->clock_enabled = 0;
-#ifdef FEATURE_VIDC_720P
-	clk_disable(vidc_device_p->hclk);
-	clk_disable(vidc_device_p->hclk_div2);
-	clk_disable(vidc_device_p->pclk);
-#endif
-#ifdef FEATURE_VIDC_1080P
-	clk_disable(vidc_device_p->vcodec_clk);
-#endif
-	mutex_unlock(&vidc_device_p->lock);
-
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_disable_clk);
-
-#else
-
-u32 vidc_enable_clk(unsigned long hclk_rate)
-{
-	int rc = -1;
-	mutex_lock(&vidc_device_p->lock);
-	vidc_device_p->ref_count++;
-
-	if (!vidc_device_p->clock_enabled) {
-		DBG("Enabling IRQ in %s()\n", __func__);
-		enable_irq(vidc_device_p->irq);
-#ifdef FEATURE_VIDC_720P
-		rc = internal_pwr_rail_mode
-			(PWR_RAIL_MFC_CLK, PWR_RAIL_CTL_MANUAL);
-		if (rc) {
-			ERR("%s(): internal_pwr_rail_mode failed %d \n",
-			__func__, rc);
-			return FALSE;
-		}
-		DBG("%s(): internal_pwr_rail_mode Success %d \n",
-		__func__, rc);
-
-		vidc_device_p->pclk =
-			clk_get(vidc_device_p->device, "mfc_pclk");
-
-		if (IS_ERR(vidc_device_p->pclk)) {
-			ERR("%s(): mfc_pclk get failed \n", __func__);
-
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		vidc_device_p->hclk =
-			clk_get(vidc_device_p->device, "mfc_clk");
-
-		if (IS_ERR(vidc_device_p->hclk)) {
-			ERR("%s(): mfc_clk get failed \n", __func__);
-
-			clk_put(vidc_device_p->pclk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		vidc_device_p->hclk_div2 =
-			clk_get(vidc_device_p->device, "mfc_div2_clk");
-
-		if (IS_ERR(vidc_device_p->pclk)) {
-			ERR("%s(): mfc_div2_clk get failed \n", __func__);
-
-			clk_put(vidc_device_p->pclk);
-			clk_put(vidc_device_p->hclk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		vidc_device_p->hclk_rate = hclk_rate;
-
-		if (clk_set_rate(vidc_device_p->hclk,
-			vidc_device_p->hclk_rate)) {
-			ERR("vidc hclk set rate failed \n");
-			clk_put(vidc_device_p->pclk);
-			clk_put(vidc_device_p->hclk);
-			clk_put(vidc_device_p->hclk_div2);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		if (clk_enable(vidc_device_p->pclk)) {
-			ERR("vidc pclk Enable failed \n");
-
-			clk_put(vidc_device_p->hclk);
-			clk_put(vidc_device_p->hclk_div2);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		if (clk_enable(vidc_device_p->hclk)) {
-			ERR("vidc  hclk Enable failed \n");
-			clk_put(vidc_device_p->pclk);
-			clk_put(vidc_device_p->hclk_div2);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		if (clk_enable(vidc_device_p->hclk_div2)) {
-			ERR("vidc  hclk Enable failed \n");
-			clk_put(vidc_device_p->hclk);
-			clk_put(vidc_device_p->pclk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-		msleep(20);
-		rc = internal_pwr_rail_ctl(PWR_RAIL_MFC_CLK, 1);
-		if (rc) {
-			ERR("\n internal_pwr_rail_ctl failed %d\n", rc);
-			return FALSE;
-		}
-		DBG("%s(): internal_pwr_rail_ctl Success %d \n",
-			__func__, rc);
-		msleep(20);
-		rc = clk_reset(vidc_device_p->pclk, CLK_RESET_DEASSERT);
-		if (rc) {
-			ERR("\n clk_reset failed %d\n", rc);
-			return FALSE;
-		}
-		msleep(20);
-#endif
-#ifdef FEATURE_VIDC_1080P
-		vidc_device_p->vcodec_clk =
-		clk_get(vidc_device_p->device, "vcodec_clk");
-
-		if (IS_ERR(vidc_device_p->vcodec_clk)) {
-			ERR("%s(): vcodec_clk get failed \n", __func__);
-
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		vidc_device_p->hclk_rate = hclk_rate;
-
-		if (clk_set_rate(vidc_device_p->vcodec_clk,
-			vidc_device_p->hclk_rate)) {
-			ERR("vidc vcodec_clk set rate failed \n");
-			clk_put(vidc_device_p->vcodec_clk);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-
-		if (clk_enable(vidc_device_p->vcodec_clk)) {
-			ERR("vidc vcodec_clk Enable failed \n");
-
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-		msleep(20);
-		/* Need to add the power rail enable*/
-		DBG("%s(): internal_pwr_rail_ctl Success %d \n",
-			__func__, rc);
-		msleep(20);
-		/*
-		we may need to add the clock reset if the vdc clock defines
-		reset with CLK_RESET_DEASSERT
-		msleep(20);
-		*/
-#endif
-	}
-	vidc_device_p->clock_enabled = 1;
-	mutex_unlock(&vidc_device_p->lock);
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_enable_clk);
-
-u32 vidc_disable_clk(void)
-{
-	int rc = -1;
-	mutex_lock(&vidc_device_p->lock);
-
-	if (!vidc_device_p->ref_count ||
-		!vidc_device_p->clock_enabled) {
-		return FALSE;
-	}
-
-	if (vidc_device_p->ref_count > 0)
-		vidc_device_p->ref_count--;
-
-	if (!vidc_device_p->ref_count) {
-		DBG("Disabling IRQ in %s()\n", __func__);
-		disable_irq_nosync(vidc_device_p->irq);
-#ifdef FEATURE_VIDC_720P
-		rc = clk_reset(vidc_device_p->pclk, CLK_RESET_ASSERT);
-		if (rc) {
-			ERR("\n clk_reset failed %d\n", rc);
-			return FALSE;
-		}
-		msleep(20);
-
-		rc = internal_pwr_rail_ctl(PWR_RAIL_MFC_CLK, 0);
-		if (rc) {
-			ERR("\n internal_pwr_rail_ctl failed %d\n", rc);
-			return FALSE;
-		}
-
-		vidc_device_p->clock_enabled = 0;
-		clk_disable(vidc_device_p->hclk);
-		clk_disable(vidc_device_p->hclk_div2);
-		clk_disable(vidc_device_p->pclk);
-
-		clk_put(vidc_device_p->hclk_div2);
-		clk_put(vidc_device_p->hclk);
-		clk_put(vidc_device_p->pclk);
-#endif
-#ifdef FEATURE_VIDC_1080P
-		/*
-		we may need to add the clock reset if the vdc clock defines
-		reset with CLK_RESET_ASSERT
-		msleep(20);
-		*/
-		/* Need to add the power rail enable*/
-		vidc_device_p->clock_enabled = 0;
-		clk_disable(vidc_device_p->vcodec_clk);
-		clk_put(vidc_device_p->vcodec_clk);
-#endif
-	}
-	mutex_unlock(&vidc_device_p->lock);
-	return TRUE;
-}
-EXPORT_SYMBOL(vidc_disable_clk);
-
-#endif
-
-unsigned char *vidc_command_control_fw;
-u32 vidc_command_control_fw_size;
-
-#ifdef FEATURE_VIDC_720P
-unsigned char *vidc_mpg4_dec_fw;
-u32 vidc_mpg4_dec_fw_size;
-
-unsigned char *vidc_h263_dec_fw;
-u32 vidc_h263_dec_fw_size;
-
-unsigned char *vidc_h264_dec_fw;
-u32 vidc_h264_dec_fw_size;
-
-unsigned char *vidc_mpg4_enc_fw;
-u32 vidc_mpg4_enc_fw_size;
-
-unsigned char *vidc_h264_enc_fw;
-u32 vidc_h264_enc_fw_size;
-
-unsigned char *vidc_vc1_dec_fw;
-u32 vidc_vc1_dec_fw_size;
-#endif
 
 int vidc_load_firmware(void)
 {
-	int rc = 0;
-	const struct firmware *fw_boot = NULL;
-#ifdef FEATURE_VIDC_720P
-	const struct firmware *fw_mpg4_dec = NULL;
-	const struct firmware *fw_h263_dec = NULL;
-	const struct firmware *fw_h264_dec = NULL;
-	const struct firmware *fw_mpg4_enc = NULL;
-	const struct firmware *fw_h264_enc = NULL;
-	const struct firmware *fw_vc1_dec = NULL;
-#endif
-	u32 status = TRUE;
+	u32 status = true;
 
 	mutex_lock(&vidc_device_p->lock);
-
 	if (!vidc_device_p->get_firmware) {
-		rc = request_firmware(&fw_boot,
-			VIDC_BOOT_FW, vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_BOOT_FW, rc);
-			mutex_unlock(&vidc_device_p->lock);
-			return FALSE;
-		}
-		vidc_command_control_fw = (unsigned char *)fw_boot->data;
-		vidc_command_control_fw_size = (u32) fw_boot->size;
-
-#ifdef FEATURE_VIDC_720P
-		rc = request_firmware(&fw_mpg4_dec, VIDC_MPG4_DEC_FW,
-			vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_MPG4_DEC_FW, rc);
-			status = FALSE;
-			goto boot_fw_free;
-		}
-		vidc_mpg4_dec_fw = (unsigned char *)fw_mpg4_dec->data;
-		vidc_mpg4_dec_fw_size = (u32) fw_mpg4_dec->size;
-
-
-		rc = request_firmware(&fw_h263_dec, VIDC_H263_DEC_FW,
-			vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_H263_DEC_FW, rc);
-			status = FALSE;
-			goto mp4dec_fw_free;
-		}
-		vidc_h263_dec_fw = (unsigned char *)fw_h263_dec->data;
-		vidc_h263_dec_fw_size = (u32) fw_h263_dec->size;
-
-		rc = request_firmware(&fw_h264_dec, VIDC_H264_DEC_FW,
-			vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_H264_DEC_FW, rc);
-			status = FALSE;
-			goto h263dec_fw_free;
-		}
-		vidc_h264_dec_fw = (unsigned char *)fw_h264_dec->data;
-		vidc_h264_dec_fw_size = (u32) fw_h264_dec->size;
-
-		rc = request_firmware(&fw_mpg4_enc, VIDC_MPG4_ENC_FW,
-			vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_MPG4_ENC_FW, rc);
-			status = FALSE;
-			goto h264dec_fw_free;
-		}
-		vidc_mpg4_enc_fw = (unsigned char *)fw_mpg4_enc->data;
-		vidc_mpg4_enc_fw_size = (u32) fw_mpg4_enc->size;
-
-		rc = request_firmware(&fw_h264_enc, VIDC_H264_ENC_FW,
-			vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_H264_ENC_FW, rc);
-			status = FALSE;
-			goto mp4enc_fw_free;
-		}
-		vidc_h264_enc_fw = (unsigned char *)fw_h264_enc->data;
-		vidc_h264_enc_fw_size = (u32) fw_h264_enc->size;
-
-		rc = request_firmware(&fw_vc1_dec, VIDC_VC1_DEC_FW,
-			vidc_device_p->device);
-		if (rc) {
-			ERR("request_firmware for %s failed with error %d\n",
-					VIDC_VC1_DEC_FW, rc);
-			status = FALSE;
-			goto h264enc_fw_free;
-		}
-		vidc_vc1_dec_fw = (unsigned char *)fw_vc1_dec->data;
-		vidc_vc1_dec_fw_size = (u32) fw_vc1_dec->size;
-#endif
+		status = res_trk_download_firmware();
+		if (!status)
+			goto error;
 		vidc_device_p->get_firmware = 1;
 	}
-
 	vidc_device_p->firmware_refcount++;
-
+error:
 	mutex_unlock(&vidc_device_p->lock);
 	return status;
-
-#ifdef FEATURE_VIDC_720P
-h264enc_fw_free:
-	release_firmware(fw_h264_enc);
-mp4enc_fw_free:
-	release_firmware(fw_mpg4_enc);
-h264dec_fw_free:
-	release_firmware(fw_h264_dec);
-h263dec_fw_free:
-	release_firmware(fw_h263_dec);
-mp4dec_fw_free:
-	release_firmware(fw_mpg4_dec);
-boot_fw_free:
-	release_firmware(fw_boot);
-	mutex_unlock(&vidc_device_p->lock);
-	return FALSE;
-#endif
 }
 EXPORT_SYMBOL(vidc_load_firmware);
 
@@ -945,7 +335,7 @@ void vidc_release_firmware(void)
 EXPORT_SYMBOL(vidc_release_firmware);
 
 u32 vidc_lookup_addr_table(struct video_client_ctx *client_ctx,
-	enum buffer_dir buffer_type,
+	enum buffer_dir buffer,
 	u32 search_with_user_vaddr,
 	unsigned long *user_vaddr,
 	unsigned long *kernel_vaddr,
@@ -955,27 +345,27 @@ u32 vidc_lookup_addr_table(struct video_client_ctx *client_ctx,
 	u32 num_of_buffers;
 	u32 i;
 	struct buf_addr_table *buf_addr_table;
-	u32 found = FALSE;
+	u32 found = false;
 
 	if (!client_ctx)
-		return FALSE;
+		return false;
 
-	if (buffer_type == BUFFER_TYPE_INPUT) {
+	if (buffer == BUFFER_TYPE_INPUT) {
 		buf_addr_table = client_ctx->input_buf_addr_table;
 		num_of_buffers = client_ctx->num_of_input_buffers;
-		DBG("%s(): buffer_type = INPUT \n", __func__);
+		DBG("%s(): buffer = INPUT\n", __func__);
 
 	} else {
 		buf_addr_table = client_ctx->output_buf_addr_table;
 		num_of_buffers = client_ctx->num_of_output_buffers;
-		DBG("%s(): buffer_type = OUTPUT \n", __func__);
+		DBG("%s(): buffer = OUTPUT\n", __func__);
 	}
 
 	for (i = 0; i < num_of_buffers; ++i) {
 		if (search_with_user_vaddr) {
 			if (*user_vaddr == buf_addr_table[i].user_vaddr) {
 				*kernel_vaddr = buf_addr_table[i].kernel_vaddr;
-				found = TRUE;
+				found = true;
 				DBG("%s() : client_ctx = %p."
 				" user_virt_addr = 0x%08lx is found",
 				__func__, client_ctx, *user_vaddr);
@@ -984,7 +374,7 @@ u32 vidc_lookup_addr_table(struct video_client_ctx *client_ctx,
 		} else {
 			if (*kernel_vaddr == buf_addr_table[i].kernel_vaddr) {
 				*user_vaddr = buf_addr_table[i].user_vaddr;
-				found = TRUE;
+				found = true;
 				DBG("%s() : client_ctx = %p."
 				" kernel_virt_addr = 0x%08lx is found",
 				__func__, client_ctx, *kernel_vaddr);
@@ -1002,14 +392,14 @@ u32 vidc_lookup_addr_table(struct video_client_ctx *client_ctx,
 		if (search_with_user_vaddr)
 			DBG("kernel_vaddr = 0x%08lx, phy_addr = 0x%08lx "
 			" pmem_fd = %d, struct *file	= %p "
-			"buffer_index = %d \n", *kernel_vaddr,
+			"buffer_index = %d\n", *kernel_vaddr,
 			*phy_addr, *pmem_fd, *file, *buffer_index);
 		else
 			DBG("user_vaddr = 0x%08lx, phy_addr = 0x%08lx "
 			" pmem_fd = %d, struct *file	= %p "
-			"buffer_index = %d \n", *user_vaddr, *phy_addr,
+			"buffer_index = %d\n", *user_vaddr, *phy_addr,
 			*pmem_fd, *file, *buffer_index);
-		return TRUE;
+		return true;
 	} else {
 		if (search_with_user_vaddr)
 			DBG("%s() : client_ctx = %p user_virt_addr = 0x%08lx"
@@ -1018,13 +408,13 @@ u32 vidc_lookup_addr_table(struct video_client_ctx *client_ctx,
 			DBG("%s() : client_ctx = %p kernel_virt_addr = 0x%08lx"
 			" Not Found.\n", __func__, client_ctx,
 			*kernel_vaddr);
-		return FALSE;
+		return false;
 	}
 }
 EXPORT_SYMBOL(vidc_lookup_addr_table);
 
 u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
-	enum buffer_dir buffer_type, unsigned long user_vaddr,
+	enum buffer_dir buffer, unsigned long user_vaddr,
 	unsigned long *kernel_vaddr, int pmem_fd,
 	unsigned long buffer_addr_offset, unsigned int max_num_buffers)
 {
@@ -1035,25 +425,25 @@ u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
 	struct buf_addr_table *buf_addr_table;
 
 	if (!client_ctx)
-		return FALSE;
+		return false;
 
-	if (buffer_type == BUFFER_TYPE_INPUT) {
+	if (buffer == BUFFER_TYPE_INPUT) {
 		buf_addr_table = client_ctx->input_buf_addr_table;
 		num_of_buffers = &client_ctx->num_of_input_buffers;
-		DBG("%s(): buffer_type = INPUT #Buf = %d\n",
+		DBG("%s(): buffer = INPUT #Buf = %d\n",
 			__func__, *num_of_buffers);
 
 	} else {
 		buf_addr_table = client_ctx->output_buf_addr_table;
 		num_of_buffers = &client_ctx->num_of_output_buffers;
-		DBG("%s(): buffer_type = OUTPUT #Buf = %d\n",
+		DBG("%s(): buffer = OUTPUT #Buf = %d\n",
 			__func__, *num_of_buffers);
 	}
 
 	if (*num_of_buffers == max_num_buffers) {
 		ERR("%s(): Num of buffers reached max value : %d",
 			__func__, max_num_buffers);
-		return FALSE;
+		return false;
 	}
 
 	i = 0;
@@ -1064,12 +454,12 @@ u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
 		DBG("%s() : client_ctx = %p."
 			" user_virt_addr = 0x%08lx already set",
 			__func__, client_ctx, user_vaddr);
-		return FALSE;
+		return false;
 	} else {
 		if (get_pmem_file(pmem_fd, &phys_addr,
 				kernel_vaddr, &len, &file)) {
 			ERR("%s(): get_pmem_file failed\n", __func__);
-			return FALSE;
+			return false;
 		}
 		put_pmem_file(file);
 		phys_addr += buffer_addr_offset;
@@ -1084,12 +474,12 @@ u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
 			"kernel_vaddr = 0x%08lx inserted!",	__func__,
 			client_ctx, user_vaddr, *kernel_vaddr);
 	}
-	return TRUE;
+	return true;
 }
 EXPORT_SYMBOL(vidc_insert_addr_table);
 
 u32 vidc_delete_addr_table(struct video_client_ctx *client_ctx,
-	enum buffer_dir buffer_type,
+	enum buffer_dir buffer,
 	unsigned long user_vaddr,
 	unsigned long *kernel_vaddr)
 {
@@ -1098,21 +488,21 @@ u32 vidc_delete_addr_table(struct video_client_ctx *client_ctx,
 	struct buf_addr_table *buf_addr_table;
 
 	if (!client_ctx)
-		return FALSE;
+		return false;
 
-	if (buffer_type == BUFFER_TYPE_INPUT) {
+	if (buffer == BUFFER_TYPE_INPUT) {
 		buf_addr_table = client_ctx->input_buf_addr_table;
 		num_of_buffers = &client_ctx->num_of_input_buffers;
-		DBG("%s(): buffer_type = INPUT \n", __func__);
+		DBG("%s(): buffer = INPUT\n", __func__);
 
 	} else {
 		buf_addr_table = client_ctx->output_buf_addr_table;
 		num_of_buffers = &client_ctx->num_of_output_buffers;
-		DBG("%s(): buffer_type = OUTPUT \n", __func__);
+		DBG("%s(): buffer = OUTPUT\n", __func__);
 	}
 
 	if (!*num_of_buffers)
-		return FALSE;
+		return false;
 
 	i = 0;
 	while (i < *num_of_buffers &&
@@ -1122,7 +512,7 @@ u32 vidc_delete_addr_table(struct video_client_ctx *client_ctx,
 		DBG("%s() : client_ctx = %p."
 			" user_virt_addr = 0x%08lx NOT found",
 			__func__, client_ctx, user_vaddr);
-		return FALSE;
+		return false;
 	}
 	*kernel_vaddr = buf_addr_table[i].kernel_vaddr;
 	if (i < (*num_of_buffers - 1)) {
@@ -1141,42 +531,42 @@ u32 vidc_delete_addr_table(struct video_client_ctx *client_ctx,
 	DBG("%s() : client_ctx = %p."
 		" user_virt_addr = 0x%08lx is found and deleted",
 		__func__, client_ctx, user_vaddr);
-	return TRUE;
+	return true;
 }
 EXPORT_SYMBOL(vidc_delete_addr_table);
 
-u32 vidc_timer_create(void (*pf_timer_handler)(void *),
-	void *p_user_data, void **pp_timer_handle)
+u32 vidc_timer_create(void (*timer_handler)(void *),
+	void *user_data, void **timer_handle)
 {
 	struct vidc_timer *hw_timer = NULL;
-	if (!pf_timer_handler || !pp_timer_handle) {
-		DBG("%s(): timer creation failed \n ", __func__);
-		return FALSE;
+	if (!timer_handler || !timer_handle) {
+		DBG("%s(): timer creation failed\n ", __func__);
+		return false;
 	}
 	hw_timer = kzalloc(sizeof(struct vidc_timer), GFP_KERNEL);
 	if (!hw_timer) {
-		DBG("%s(): timer creation failed in allocation \n ", __func__);
-		return FALSE;
+		DBG("%s(): timer creation failed in allocation\n ", __func__);
+		return false;
 	}
 	init_timer(&hw_timer->hw_timeout);
 	hw_timer->hw_timeout.data = (unsigned long)hw_timer;
 	hw_timer->hw_timeout.function = vidc_timer_fn;
-	hw_timer->cb_func = pf_timer_handler;
-	hw_timer->userdata = p_user_data;
-	*pp_timer_handle = hw_timer;
-	return TRUE;
+	hw_timer->cb_func = timer_handler;
+	hw_timer->userdata = user_data;
+	*timer_handle = hw_timer;
+	return true;
 }
 EXPORT_SYMBOL(vidc_timer_create);
 
-void  vidc_timer_release(void *p_timer_handle)
+void  vidc_timer_release(void *timer_handle)
 {
-	kfree(p_timer_handle);
+	kfree(timer_handle);
 }
 EXPORT_SYMBOL(vidc_timer_release);
 
-void  vidc_timer_start(void *p_timer_handle, u32 n_time_out)
+void  vidc_timer_start(void *timer_handle, u32 time_out)
 {
-	struct vidc_timer *hw_timer = (struct vidc_timer *)p_timer_handle;
+	struct vidc_timer *hw_timer = (struct vidc_timer *)timer_handle;
 	DBG("%s(): start timer\n ", __func__);
 	if (hw_timer) {
 		hw_timer->hw_timeout.expires = jiffies + 1*HZ;
@@ -1185,9 +575,9 @@ void  vidc_timer_start(void *p_timer_handle, u32 n_time_out)
 }
 EXPORT_SYMBOL(vidc_timer_start);
 
-void  vidc_timer_stop(void *p_timer_handle)
+void  vidc_timer_stop(void *timer_handle)
 {
-	struct vidc_timer *hw_timer = (struct vidc_timer *)p_timer_handle;
+	struct vidc_timer *hw_timer = (struct vidc_timer *)timer_handle;
 	DBG("%s(): stop timer\n ", __func__);
 	if (hw_timer)
 		del_timer(&hw_timer->hw_timeout);
