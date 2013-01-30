@@ -19,8 +19,13 @@ enum ip_conntrack_info
 	/* >= this indicates reply direction */
 	IP_CT_IS_REPLY,
 
+	IP_CT_ESTABLISHED_REPLY = IP_CT_ESTABLISHED + IP_CT_IS_REPLY,
+	IP_CT_RELATED_REPLY = IP_CT_RELATED + IP_CT_IS_REPLY,
+	IP_CT_NEW_REPLY = IP_CT_NEW + IP_CT_IS_REPLY,
 	/* Number of distinct IP_CT types (no NEW in reply dirn). */
 	IP_CT_NUMBER = IP_CT_IS_REPLY * 2 - 1
+
+
 };
 
 /* Bitset representing status of connection. */
@@ -73,6 +78,15 @@ enum ip_conntrack_status {
 	/* Connection has fixed timeout. */
 	IPS_FIXED_TIMEOUT_BIT = 10,
 	IPS_FIXED_TIMEOUT = (1 << IPS_FIXED_TIMEOUT_BIT),
+
+	/* Conntrack is a template */
+	IPS_TEMPLATE_BIT = 11,
+	IPS_TEMPLATE = (1 << IPS_TEMPLATE_BIT),
+
+	/* Conntrack is a fake untracked entry */
+	IPS_UNTRACKED_BIT = 12,
+	IPS_UNTRACKED = (1 << IPS_UNTRACKED_BIT),
+
 };
 
 #ifdef __KERNEL__
