@@ -999,7 +999,11 @@ static int __init tovis_qvga_init(void)
 #else
 		pinfo->bpp = 16;
 #endif
-		pinfo->fb_num = 2;
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+		pinfo->fb_num = 3;
+#else
+ 		pinfo->fb_num = 2;
+#endif
 		pinfo->lcd.vsync_enable = FALSE;
 		pinfo->lcd.refx100 = 6000;
 		pinfo->lcd.v_back_porch = 8;
