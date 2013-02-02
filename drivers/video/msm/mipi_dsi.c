@@ -29,7 +29,7 @@
 #include <linux/uaccess.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
-#include <linux/pm_qos_params.h>
+#endif
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
@@ -349,14 +349,16 @@ static int mipi_dsi_off(struct platform_device *pdev)
 
 	mfd = platform_get_drvdata(pdev);
 
-#ifdef XXXXX
-
 	ret = panel_next_off(pdev);
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(0);
-
-	pm_qos_update_request(mfd->pm_qos_req, PM_QOS_DEFAULT_VALUE);
+#ifdef CONFIG_MSM_BUS_SCALING
+	mdp_bus_scale_update_request(0);
+#else
+	if (mfd->ebi1_clk)
+		clk_disable(mfd->ebi1_clk);
+#endif
 
 	disable_irq(DSI_IRQ);
 
@@ -376,7 +378,6 @@ static int mipi_dsi_off(struct platform_device *pdev)
 
 	/* disbale dsi engine */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0000, 0);
-#endif
 
 	pr_debug("%s:\n", __func__);
 
@@ -475,7 +476,12 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	mipi_dsi_op_mode_config(mipi->mode);
 
-	pm_qos_update_request(mfd->pm_qos_req, 122000);
+#ifdef CONFIG_MSM_BUS_SCALING
+	mdp_bus_scale_update_request(2);
+#else
+	if (mfd->ebi1_clk)
+		clk_enable(mfd->ebi1_clk);
+#endif
 
 	pr_debug("%s:\n", __func__);
 
@@ -618,10 +624,13 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 	pdev_list[pdev_list_cnt++] = pdev;
 
-	mfd->pm_qos_req = pm_qos_add_request(PM_QOS_SYSTEM_BUS_FREQ,
-					       PM_QOS_DEFAULT_VALUE);
-	if (!mfd->pm_qos_req)
+#ifndef CONFIG_MSM_BUS_SCALING
+	if (IS_ERR(mfd->ebi1_clk)) {
+		rc = PTR_ERR(mfd->ebi1_clk);
 		goto mipi_dsi_probe_err;
+	}
+	clk_set_rate(mfd->ebi1_clk, 122000000);
+#endif
 
 	return 0;
 
@@ -635,7 +644,9 @@ static int mipi_dsi_remove(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 
 	mfd = platform_get_drvdata(pdev);
-	pm_qos_remove_request(mfd->pm_qos_req);
+#ifndef CONFIG_MSM_BUS_SCALING
+	clk_put(mfd->ebi1_clk);
+#endif
 
 	iounmap(msm_pmdh_base);
 
