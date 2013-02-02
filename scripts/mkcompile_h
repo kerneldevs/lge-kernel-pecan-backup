@@ -5,8 +5,6 @@ ARCH=$2
 SMP=$3
 PREEMPT=$4
 CC=$5
-BUILD_USER=PecanCM
-BUILD_HOST=pinky
 
 vecho() { [ "${quiet}" = "silent_" ] || echo "$@" ; }
 
@@ -66,11 +64,16 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
   echo \#define UTS_VERSION \"`echo $UTS_VERSION | $UTS_TRUNCATE`\"
 
   echo \#define LINUX_COMPILE_TIME \"`date +%T`\"
-
+# change by antdking Change_S (defined our server names)
+if [ -n "$SERVER_NAME" ]; then
+  echo \#define LINUX_COMPILE_BY \"PecanCM\"
+  echo \#define LINUX_COMPILE_HOST \"$SERVER_NAME\"
+else #(define the default names)
   echo \#define LINUX_COMPILE_BY \"`whoami`\"
-  echo \#define LINUX_COMPILE_HOST \"PecanCM\"
-# RON_CHANGE print RmKernel instead of hostname in kernel release version string
-# cips173@gmail.com.com, 2012-06-23
+  echo \#define LINUX_COMPILE_HOST \"`hostname | $UTS_TRUNCATE`\"
+fi
+# change by antdking Change_E
+# antdking@PecanCM <anthonydking@gmail.com> (02/01/13)
 
   if [ -x /bin/dnsdomainname ]; then
     domain=`dnsdomainname 2> /dev/null`
