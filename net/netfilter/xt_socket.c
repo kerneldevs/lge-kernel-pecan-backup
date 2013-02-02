@@ -103,7 +103,7 @@ extract_icmp4_fields(const struct sk_buff *skb,
 }
 
 struct sock*
-xt_socket_get4_sk(const struct sk_buff *skb, struct xt_action_param *par)
+xt_socket_get4_sk(const struct sk_buff *skb, const struct xt_match_param *par)
 {
 	const struct iphdr *iph = ip_hdr(skb);
 	struct udphdr _hdr, *hp = NULL;
@@ -156,7 +156,7 @@ xt_socket_get4_sk(const struct sk_buff *skb, struct xt_action_param *par)
 #endif
 
 	sk = nf_tproxy_get_sock_v4(dev_net(skb->dev), protocol,
-				   saddr, daddr, sport, dport, par->in, NFT_LOOKUP_ANY);
+				   saddr, daddr, sport, dport, par->in, true);
 
 	pr_debug("proto %hhu %pI4:%hu -> %pI4:%hu (orig %pI4:%hu) sock %p\n",
 		 protocol, &saddr, ntohs(sport),
@@ -168,7 +168,7 @@ xt_socket_get4_sk(const struct sk_buff *skb, struct xt_action_param *par)
 EXPORT_SYMBOL(xt_socket_get4_sk);
 
 static bool
-socket_match(const struct sk_buff *skb, struct xt_action_param *par,
+socket_match(const struct sk_buff *skb, const struct xt_match_param *par,
 	     const struct xt_socket_mtinfo1 *info)
 {
 	struct sock *sk;
@@ -180,7 +180,7 @@ socket_match(const struct sk_buff *skb, struct xt_action_param *par,
 
 		/* Ignore sockets listening on INADDR_ANY */
 		wildcard = (sk->sk_state != TCP_TIME_WAIT &&
-			    inet_sk(sk)->inet_rcv_saddr == 0);
+			    inet_sk(sk)->rcv_saddr == 0);
 
 		/* Ignore non-transparent sockets,
 		   if XT_SOCKET_TRANSPARENT is used */
@@ -200,13 +200,13 @@ socket_match(const struct sk_buff *skb, struct xt_action_param *par,
 }
 
 static bool
-socket_mt4_v0(const struct sk_buff *skb, struct xt_action_param *par)
+socket_mt4_v0(const struct sk_buff *skb, const struct xt_match_param *par)
 {
 	return socket_match(skb, par, NULL);
 }
 
 static bool
-socket_mt4_v1(const struct sk_buff *skb, struct xt_action_param *par)
+socket_mt4_v1(const struct sk_buff *skb, const struct xt_match_param *par)
 {
 	return socket_match(skb, par, par->matchinfo);
 }
@@ -266,7 +266,7 @@ extract_icmp6_fields(const struct sk_buff *skb,
 }
 
 struct sock*
-xt_socket_get6_sk(const struct sk_buff *skb, struct xt_action_param *par)
+xt_socket_get6_sk(const struct sk_buff *skb, const struct xt_match_param *par)
 {
 	struct ipv6hdr *iph = ipv6_hdr(skb);
 	struct udphdr _hdr, *hp = NULL;
@@ -312,7 +312,7 @@ xt_socket_get6_sk(const struct sk_buff *skb, struct xt_action_param *par)
 EXPORT_SYMBOL(xt_socket_get6_sk);
 
 static bool
-socket_mt6_v1(const struct sk_buff *skb, struct xt_action_param *par)
+socket_mt6_v1(const struct sk_buff *skb, const struct xt_match_param *par)
 {
 	struct sock *sk;
 	const struct xt_socket_mtinfo1 *info;
