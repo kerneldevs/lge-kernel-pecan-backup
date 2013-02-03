@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.10
- * Sat Feb  2 12:38:17 2013
+ * Sun Feb  3 11:16:44 2013
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
@@ -201,7 +201,6 @@
 #define CONFIG_AUDIO_AAC_PLUS 1
 #define CONFIG_PAGEFLAGS_EXTENDED 1
 #define CONFIG_CRYPTO_MANAGER 1
-#define CONFIG_CPU_FREQ_DEBUG 1
 #define CONFIG_SWAP 1
 #define CONFIG_NETFILTER_XT_MATCH_CONNMARK 1
 #define CONFIG_CPU_FREQ_TABLE 1
