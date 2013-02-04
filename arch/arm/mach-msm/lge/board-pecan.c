@@ -145,6 +145,20 @@ struct usb_composition usb_func_composition[] = {
 		.adb_functions      = 0x127384,
 	},
 #endif	
+#ifdef CONFIG_USB_ANDROID_ACCESSORY
+	{
+		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
+		.product_id	= USB_ACCESSORY_PRODUCT_ID,
+		.num_functions	= ARRAY_SIZE(usb_functions_accessory),
+		.functions	= usb_functions_accessory,
+	},
+	{
+		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
+		.product_id	= USB_ACCESSORY_ADB_PRODUCT_ID,
+		.num_functions	= ARRAY_SIZE(usb_functions_accessory_adb),
+		.functions	= usb_functions_accessory_adb,
+	},
+#endif
 #ifdef CONFIG_USB_ANDROID_RNDIS
 	{
 		/* Microsoft's RNDIS driver */
@@ -173,21 +187,6 @@ struct android_usb_platform_data android_usb_pdata = {
 	.init_product_id	= 0x618E,
 	.nluns = 1,
 };
-
-#ifdef CONFIG_USB_ANDROID_ACCESSORY
-	{
-		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
-		.product_id	= USB_ACCESSORY_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(usb_functions_accessory),
-		.functions	= usb_functions_accessory,
-	},
-	{
-		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
-		.product_id	= USB_ACCESSORY_ADB_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(usb_functions_accessory_adb),
-		.functions	= usb_functions_accessory_adb,
-	},
-#endif
 
 struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns		= 1,
