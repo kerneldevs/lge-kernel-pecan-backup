@@ -526,6 +526,19 @@ static int  android_bind(struct usb_composite_dev *cdev)
 #ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_GADGET
 	struct usb_composition *func;
 #endif
+#ifdef CONFIG_USB_ANDROID_ACCESSORY
+		if (!strcmp(f->name, "accessory") && enable) {
+			struct usb_function		*func;
+
+		    /* disable everything else (and keep adb for now) */
+			list_for_each_entry(func, &android_config_driver.functions, list) {
+				if (strcmp(func->name, "accessory")
+					&& strcmp(func->name, "adb")) {
+					usb_function_set_enabled(func, 0);
+				}
+			}
+        }
+#endif
 
 	pr_debug("android_bind\n");
 

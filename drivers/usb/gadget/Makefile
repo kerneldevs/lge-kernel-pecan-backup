@@ -52,6 +52,10 @@ ifeq ($(CONFIG_USB_ANDROID_RNDIS),y)
 F_RNDIS = rndis.o f_rndis.o
 endif
 
+ifeq ($(USB_ANDROID_ACCESSORY),y)
+obj-$(CONFIG_USB_ANDROID_ACCESSORY)  += f_accessory.o
+endif
+
 # LGE_CHANGE_S [hyunhui.park@lge.com] 2010-07-11, Add common LGE usb features
 ifeq ($(CONFIG_USB_SUPPORT_LGE_ANDROID_GADGET), y)
 U_LGEUSB = u_lgeusb.o
