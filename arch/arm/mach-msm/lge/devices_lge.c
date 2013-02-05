@@ -53,7 +53,7 @@ static int __init board_revno_setup(char *rev_info)
 	int i;
 
 	lge_bd_rev = LGE_REV_TOT_NUM;
-	
+
 	for (i = 0; i < LGE_REV_TOT_NUM; i++) 
 		if (!strncmp(rev_info, rev_str[i], 6)) {
 			lge_bd_rev = i;
@@ -112,7 +112,7 @@ void __init lge_add_ramconsole_devices(void)
 	res->end = res->start + LGE_RAM_CONSOLE_SIZE - 1;
 	printk("RAM CONSOLE START ADDR : %d\n", res->start);
 	printk("RAM CONSOLE END ADDR   : %d\n", res->end);
-	
+
 	platform_device_register(&ram_console_device);
 }
 
@@ -412,7 +412,7 @@ void __init msm_msm7x2x_allocate_memory_regions(void)
 		pr_info("allocating %lu bytes at %p (%lx physical) for adsp "
 				"pmem arena\n", size, addr, __pa(addr));
 	}
-	
+
 	size = pmem_fb_size ? : MSM_FB_SIZE;
 	addr = alloc_bootmem(size);
 	msm_fb_resources[0].start = __pa(addr);
@@ -970,5 +970,9 @@ __WEAK void __init lge_add_misc_devices(void)
 }
 
 __WEAK void __init lge_add_pm_devices(void)
+{
+}
+
+__WEAK void __init lge_add_usb_devices(void)
 {
 }

@@ -19,9 +19,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
-#ifdef CONFIG_USB_FUNCTION
-#include <linux/usb/mass_storage_function.h>
-#endif
 #include <linux/i2c.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -33,12 +30,6 @@
 
 #include <mach/hardware.h>
 #include <mach/msm_hsusb.h>
-#ifdef CONFIG_USB_ANDROID
-#include <linux/usb/android.h>
-#endif
-#ifdef CONFIG_USB_ANDROID_ACCESSORY
-#include <linux/usb/f_accessory.h>
-#endif
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_serial_hs.h>
@@ -88,122 +79,6 @@ struct msm_pm_platform_data msm7x27_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].residency = 0,
 };
 #endif
-
-/* board-specific usb data definitions */
-
-/* For supporting LG Android gadget framework, move android gadget platform
- * datas to specific board file
- * hyunhui.park@lge.com 2010-07-10
- */
-#ifdef CONFIG_USB_ANDROID
-/* dynamic composition */
-/* This depends on each board. QCT original is at device_lge.c */
-/* function bit : (in include/linux/usb/android.h)
-   ADB				0x0001
-   MSC				0x0002
-   ACM_MODEM		0x0003
-   DIAG				0x0004
-   ACM_NMEA			0x0005
-   GENERIC_MODEM	0x0006
-   GENERIC_NMEA		0x0007
-   CDC_ECM			0x0008
-   RMNET			0x0009
-   RNDIS			0x000A
-   MTP				0x000B
-*/
-struct usb_composition usb_func_composition[] = {
-	{
-		/* Mass Storage only mode : UMS
-		 * PID is dedicated for pecan Global
-		 */
-		.product_id         = 0x61C5,
-		.functions	    	= 0x2,
-		.adb_product_id     = 0x61C5,
-		.adb_functions	    = 0x2,
-	},
-	{
-		/* Full or Light mode : ADB, UMS, NMEA, DIAG, MODEM */
-		.product_id         = 0x618E,
-		.functions	    	= 0x2743,
-		.adb_product_id     = 0x618E,
-		.adb_functions	    = 0x12743,
-	},
-	{
-		/* Factory mode for WCDMA or GSM : DIAG, MODEM */
-		/* We are in factory mode, ignore adb function */
-		.product_id         = 0x6000,
-		.functions	    	= 0x43,
-		.adb_product_id     = 0x6000,
-		.adb_functions	    = 0x43,
-	},
-#ifdef CONFIG_USB_ANDROID_CDC_ECM
-	{
-		/* CDC ECM Driver for matching LG Android Net driver */
-		.product_id         = 0x61A2,
-		.functions          = 0x27384,
-		.adb_product_id     = 0x61A1,
-		.adb_functions      = 0x127384,
-	},
-#endif	
-#ifdef CONFIG_USB_ANDROID_ACCESSORY
-	{
-		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
-		.product_id	= USB_ACCESSORY_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(usb_functions_accessory),
-		.functions	= usb_functions_accessory,
-	},
-	{
-		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
-		.product_id	= USB_ACCESSORY_ADB_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(usb_functions_accessory_adb),
-		.functions	= usb_functions_accessory_adb,
-	},
-#endif
-#ifdef CONFIG_USB_ANDROID_RNDIS
-	{
-		/* Microsoft's RNDIS driver */
-		.product_id         = 0xF00E,
-		.functions	    	= 0xA,
-		.adb_product_id     = 0xF00E,
-		.adb_functions	    = 0xA,
-	},
-#endif
-};
-
-#define VENDOR_QCT	0x05C6
-#define VENDOR_LGE	0x1004
-
-struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= VENDOR_LGE,
-	.version	= 0x0100,
-	.compositions   = usb_func_composition,
-	.num_compositions = ARRAY_SIZE(usb_func_composition),
-	.product_name       = "LG Android USB Device",
-	.manufacturer_name	= "LG Electronics Inc.",
-	/* Default serial number(only for development) must
-	   be 20 characters at LG WCDMA class model(because of IMEI size).
-	   Currently we just have padding ;) */
-	.serial_number		= "LG_ANDROID_P350****",
-	.init_product_id	= 0x618E,
-	.nluns = 1,
-};
-
-struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns		= 1,
-	.vendor		= "GOOGLE",
-	.product	= "Mass Storage",
-	.release	= 0xFFFF,
-};
-
-struct platform_device mass_storage_device = {
-	.name           = "usb_mass_storage",
-	.id             = -1,
-	.dev            = {
-		.platform_data          = &mass_storage_pdata,
-	},
-};
-
-#endif /* CONFIG_USB_ANDROID */
 
 static struct platform_device *devices[] __initdata = {
 	&msm_device_smd,
@@ -287,12 +162,13 @@ static void __init msm7x2x_init(void)
 	msm_device_i2c_init();
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
-	if (cpu_is_msm7x27())
+        	if (cpu_is_msm7x27())
 		msm_pm_set_platform_data(msm7x27_pm_data,
 					ARRAY_SIZE(msm7x27_pm_data));
 	else
 		msm_pm_set_platform_data(msm7x25_pm_data,
 					ARRAY_SIZE(msm7x25_pm_data));
+	
 	msm7x27_wlan_init();
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
