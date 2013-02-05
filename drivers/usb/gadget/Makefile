@@ -73,8 +73,11 @@ g_serial-objs			:= serial.o
 g_midi-objs			:= gmidi.o
 gadgetfs-objs			:= inode.o
 g_file_storage-objs		:= file_storage.o
+g_mass_storage-objs             := mass_storage.o
 g_printer-objs			:= printer.o
 g_cdc-objs			:= cdc2.o
+g_multi-objs                    := multi.o
+g_nokia-objs                    := nokia.o
 g_android-objs			:= android.o f_adb.o f_mass_storage.o \
 					u_serial.o f_acm.o u_ether.o \
 					$(F_ECM) $(F_SERIAL) $(F_DIAG) \
@@ -85,9 +88,12 @@ obj-$(CONFIG_USB_AUDIO)		+= g_audio.o
 obj-$(CONFIG_USB_ETH)		+= g_ether.o
 obj-$(CONFIG_USB_GADGETFS)	+= gadgetfs.o
 obj-$(CONFIG_USB_FILE_STORAGE)	+= g_file_storage.o
+obj-$(CONFIG_USB_MASS_STORAGE)  += g_mass_storage.o
 obj-$(CONFIG_USB_G_SERIAL)	+= g_serial.o
 obj-$(CONFIG_USB_G_PRINTER)	+= g_printer.o
 obj-$(CONFIG_USB_MIDI_GADGET)	+= g_midi.o
 obj-$(CONFIG_USB_CDC_COMPOSITE) += g_cdc.o
+obj-$(CONFIG_USB_G_MULTI)       += g_multi.o
+obj-$(CONFIG_USB_G_NOKIA)       += g_nokia.o
 obj-$(CONFIG_USB_ANDROID)	+= g_android.o
 

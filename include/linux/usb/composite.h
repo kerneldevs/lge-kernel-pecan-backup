@@ -129,6 +129,7 @@ struct usb_function {
 	/* private: */
 	/* internals */
 	struct list_head		list;
+        DECLARE_BITMAP(endpoints, 32);
 	struct device			*dev;
 };
 
