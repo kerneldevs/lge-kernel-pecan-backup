@@ -14,6 +14,7 @@
 
 
 #include <linux/init.h>
+#include <linux/platform_device.h>
 
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
@@ -38,6 +39,91 @@
 
 
 #ifdef CONFIG_USB_ANDROID
+
+/* The binding list for LGE Android USB */
+char *usb_functions_lge_all[] = {
+#ifdef CONFIG_USB_ANDROID_MTP
+	"mtp",
+#endif
+#ifdef CONFIG_USB_ANDROID_ACCESSORY
+	"accessory",
+#endif
+#ifdef CONFIG_USB_ANDROID_RNDIS
+	"rndis",
+#endif
+#ifdef CONFIG_USB_ANDROID_ACM
+	"acm",
+#endif
+#ifdef CONFIG_USB_ANDROID_DIAG
+	"diag",
+#endif
+#ifdef CONFIG_USB_ANDROID_CDC_ECM
+	"ecm",
+	"acm2",
+#endif
+#ifdef CONFIG_USB_F_SERIAL
+	"nmea",
+#endif
+	"usb_mass_storage",
+	"adb",
+};
+
+/* LG Android Platform */
+char *usb_functions_lge_android_plat[] = {
+	"acm", "diag", "nmea", "usb_mass_storage",
+};
+
+char *usb_functions_lge_android_plat_adb[] = {
+	"acm", "diag", "nmea", "usb_mass_storage", "adb",
+};
+
+#ifdef CONFIG_USB_ANDROID_CDC_ECM
+/* LG AndroidNet */
+char *usb_functions_lge_android_net[] = {
+	"diag", "ecm", "acm2", "nmea", "usb_mass_storage",
+};
+
+char *usb_functions_lge_android_net_adb[] = {
+	"diag", "ecm", "acm2", "nmea", "usb_mass_storage", "adb",
+};
+#endif
+
+#ifdef CONFIG_USB_ANDROID_ACCESSORY
+static char *usb_functions_accessory[] = { "accessory" };
+static char *usb_functions_accessory_adb[] = { "accessory", "adb" };
+#endif
+
+#ifdef CONFIG_USB_ANDROID_RNDIS
+/* LG AndroidNet RNDIS ver */
+char *usb_functions_lge_android_rndis[] = {
+	"rndis",
+};
+
+char *usb_functions_lge_android_rndis_adb[] = {
+	"rndis", "adb",
+};
+#endif
+
+#ifdef CONFIG_USB_ANDROID_MTP
+/* LG AndroidNet MTP (in future use) */
+char *usb_functions_lge_android_mtp[] = {
+	"mtp",
+};
+
+char *usb_functions_lge_android_mtp_adb[] = {
+	"mtp", "adb",
+};
+#endif
+
+/* LG Manufacturing mode */
+char *usb_functions_lge_manufacturing[] = {
+	"acm", "diag",
+};
+
+/* Mass storage only mode */
+char *usb_functions_lge_mass_storage_only[] = {
+	"usb_mass_storage",
+};
 
 struct usb_composition usb_func_composition[] = {
 	{
@@ -75,16 +161,16 @@ struct usb_composition usb_func_composition[] = {
 #endif	
 #ifdef CONFIG_USB_ANDROID_ACCESSORY
 	{
-		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
-		.product_id	= USB_ACCESSORY_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(usb_functions_accessory),
-		.functions	= usb_functions_accessory,
+		.vendor_id  = USB_ACCESSORY_VENDOR_ID,
+		.product_id  = USB_ACCESSORY_PRODUCT_ID,
+		.num_functions  = ARRAY_SIZE(usb_functions_accessory),
+		.functions  = usb_functions_accessory,
 	},
 	{
-		.vendor_id	= USB_ACCESSORY_VENDOR_ID,
-		.product_id	= USB_ACCESSORY_ADB_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(usb_functions_accessory_adb),
-		.functions	= usb_functions_accessory_adb,
+		.vendor_id  = USB_ACCESSORY_VENDOR_ID,
+		.product_id  = USB_ACCESSORY_ADB_PRODUCT_ID,
+		.num_functions  = ARRAY_SIZE(usb_functions_accessory_adb),
+		.functions  = usb_functions_accessory_adb,
 	},
 #endif
 #ifdef CONFIG_USB_ANDROID_RNDIS
@@ -131,8 +217,7 @@ struct platform_device mass_storage_device = {
 	},
 };
 
-#endif /* CONFIG_USB_ANDROID */
-
+#endif
 
 
 static void __init msm7x2x_init(void)
@@ -141,7 +226,4 @@ static void __init msm7x2x_init(void)
 msm_add_usb_devices();
 
 }
-
-
-
 
