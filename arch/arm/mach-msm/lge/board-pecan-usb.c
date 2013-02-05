@@ -30,6 +30,7 @@
 #endif
 
 #include <mach/board_lge.h>
+#include <mach/gpio.h>
 
 #include "devices.h"
 #include "board-pecan.h"
