@@ -1,5 +1,4 @@
-ui_print("lge-3.0.31 kernel");
-ui_print("by AndroidArmv6");
+ui_print("PecanCM kernel");
 ui_print("extracting system...");
 set_progress(1.0);
 mount("yaffs2", "MTD", "system", "/system");
