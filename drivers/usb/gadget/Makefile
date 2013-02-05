@@ -63,7 +63,7 @@ endif
 # LGE_CHANGE_E [hyunhui.park@lge.com] 2010-07-11 
 
 ifeq ($(CONFIG_USB_GADGET_LG_MTP_DRIVER),y)
-F_MTP = f_mtp.o
+F_LGEMTP = f_lgemtp.o
 endif
 
 g_zero-objs			:= zero.o
