@@ -842,6 +842,12 @@ config USB_ANDROID_CDC_ECM
 	  android gadget.
 	  Say "y" to link the CDC-ECM as a part of android gadget
 
+config USB_ANDROID_MTP
+	boolean "Android MTP function"
+	depends on USB_ANDROID
+	help
+	  Provides Media Transfer Protocol (MTP) support for android gadget driver.
+
 config USB_ANDROID_RNDIS
 	bool "RNDIS function driver"
 	depends on USB_ANDROID
