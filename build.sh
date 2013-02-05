@@ -43,7 +43,6 @@ echo "now building the kernel"
 make $defconfig
 make -j `cat /proc/cpuinfo | grep "^processor" | wc -l` "$@"
 
-if [ -z "$morning" ]; then
 ## the zip creation
 if [ -f arch/arm/boot/zImage ]; then
 
